@@ -10,27 +10,6 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 )
 
-// const (
-// 	secretServerSalt = "al2esad;famfopa14-,410-qu82304dfoaspddasdsdo934idsadasd342141das"
-// 	valuesAccessFile = 0600
-// 	valueAccessDir   = 0700
-// )
-
-// var audioDialogs = map[string]*Dialog{}
-// var saveMessagesManager = writer.NewFileWriterManager(2 * time.Minute)
-// var regexpSymbols *regexp.Regexp = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
-
-// type Message struct {
-// 	Sender   string
-// 	Message  string
-// 	SendTime time.Time
-// }
-
-// type MessageAudioDialog struct {
-// 	Time  int64
-// 	Bytes []byte
-// }
-
 func main() {
 	fmt.Printf(`
    ____    __
@@ -107,11 +86,3 @@ Start on ports: 23099, 23098, 23097
 		}
 	}
 }
-
-// func isValidStr(str string, isKey bool) bool {
-// 	if !isKey && len(str) > 20 && len(str) < 6 {
-// 		return false
-// 	}
-
-// 	return regexpSymbols.MatchString(str)
-// }
