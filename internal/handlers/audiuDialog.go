@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"net/http"
@@ -13,7 +13,14 @@ type RequestAudio struct {
 	Message []byte
 }
 
-func audioDialogRequest(c echo.Context) error {
+type MessageAudioDialog struct {
+	Time  int64
+	Bytes []byte
+}
+
+var audioDialogs = map[string]*Dialog{}
+
+func AudioDialogRequest(c echo.Context) error {
 	var req RequestAudio
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
@@ -68,7 +75,7 @@ func audioDialogRequest(c echo.Context) error {
 	return c.JSON(http.StatusOK, resp)
 }
 
-func checkLastUsedTimeInAudioDialog() {
+func CheckLastUsedTimeInAudioDialog() {
 	maxInactive := int64(15 * time.Second)
 	sleep := time.Second * 20
 

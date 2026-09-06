@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"crypto/ecdh"
@@ -32,16 +32,16 @@ type KeyExchangeRequest struct {
 	IsRegistring    bool   `json:"is_registring"`
 }
 
-func exchangeKeyReqest(c echo.Context) error {
+func ExchangeKeyReqest(c echo.Context) error {
 	var err error
 	var req KeyExchangeRequest
 	if err := c.Bind(&req); err != nil {
-		countInvalidRequests += 1
+		CountInvalidRequests += 1
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
 	}
 
 	if !isValidStr(req.ID, true) {
-		countInvalidRequests += 1
+		CountInvalidRequests += 1
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid error"})
 	}
 
@@ -110,20 +110,20 @@ func exchangeKeyReqest(c echo.Context) error {
 	return c.JSON(http.StatusOK, response)
 }
 
-func regReqest(c echo.Context) error {
+func RegReqest(c echo.Context) error {
 	login := c.FormValue("login")
 	name := c.FormValue("name")
 	password := c.FormValue("password")
 	device := c.FormValue("device")
 	keyForServerDataBase := c.FormValue("forserver")
 	if login == "" || name == "" || password == "" || device == "" || keyForServerDataBase == "" {
-		countInvalidRequests += 1
+		CountInvalidRequests += 1
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
 	_, ok := registringUsers[device]
 	if !ok {
-		countInvalidRequests += 1
+		CountInvalidRequests += 1
 		return c.String(http.StatusBadRequest, "This request is not expected for you")
 	}
 
@@ -246,19 +246,19 @@ func regReqest(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func authReqest(c echo.Context) error {
+func AuthReqest(c echo.Context) error {
 	login := c.FormValue("login")
 	password := c.FormValue("password")
 	device := c.FormValue("device")
 	keyForServerDataBase := c.FormValue("forserver")
 	if login == "" || password == "" || device == "" || keyForServerDataBase == "" {
-		countInvalidRequests += 1
+		CountInvalidRequests += 1
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
 	_, ok := authUsers[device]
 	if !ok {
-		countInvalidRequests += 1
+		CountInvalidRequests += 1
 		return c.String(http.StatusBadRequest, "This request is not expected for you")
 	}
 
@@ -308,7 +308,7 @@ func authReqest(c echo.Context) error {
 	return c.String(http.StatusOK, encrypResp)
 }
 
-func checkStartRegAuthUsersTime() {
+func CheckStartRegAuthUsersTime() {
 	durationDelete := time.Second * 12
 	sleepTime := time.Second * 20
 	for {

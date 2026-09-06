@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"encoding/json"
@@ -29,15 +29,15 @@ type Avatar struct {
 	KeyForServerDataBase string `json:"forserver"`
 }
 
-func sendFileRequest(c echo.Context) error {
+func SendFile(c echo.Context) error {
 	var req SendFileRequest
 	if err := c.Bind(&req); err != nil {
-		countInvalidRequests += 1
+		CountInvalidRequests += 1
 		return c.JSON(http.StatusBadRequest, "Invalid JSON")
 	}
 
 	if req.Sender == "" || req.Receiver == "" || req.SenderPassword == "" || req.FileName == "" || req.Device == "" || req.KeyForServerDataBase == "" || req.File == nil {
-		countInvalidRequests += 1
+		CountInvalidRequests += 1
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
@@ -132,14 +132,14 @@ func sendFileRequest(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func getFileRequest(c echo.Context) error {
+func GetFileRequest(c echo.Context) error {
 	device := c.FormValue("device")
 	login := c.FormValue("login")
 	password := c.FormValue("password")
 	fileName := c.FormValue("filename")
 	keyForServerDataBase := c.FormValue("forserver")
 	if device == "" || login == "" || password == "" || fileName == "" || keyForServerDataBase == "" {
-		countInvalidRequests += 1
+		CountInvalidRequests += 1
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
@@ -192,14 +192,14 @@ func getFileRequest(c echo.Context) error {
 	return c.JSON(http.StatusOK, file)
 }
 
-func delFileRequest(c echo.Context) error {
+func DelFileRequest(c echo.Context) error {
 	device := c.FormValue("device")
 	login := c.FormValue("login")
 	password := c.FormValue("password")
 	fileName := c.FormValue("filename")
 	keyForServerDataBase := c.FormValue("forserver")
 	if device == "" || login == "" || password == "" || fileName == "" || keyForServerDataBase == "" {
-		countInvalidRequests += 1
+		CountInvalidRequests += 1
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
@@ -245,15 +245,15 @@ func delFileRequest(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func setAvatarRequest(c echo.Context) error {
+func SetAvatarRequest(c echo.Context) error {
 	var req Avatar
 	if err := c.Bind(&req); err != nil {
-		countInvalidRequests += 1
+		CountInvalidRequests += 1
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
 	}
 
 	if req.DeviceInfo == "" || req.Login == "" || req.Password == "" || req.KeyForServerDataBase == "" {
-		countInvalidRequests += 1
+		CountInvalidRequests += 1
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
@@ -299,12 +299,12 @@ func setAvatarRequest(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func getAvatarRequest(c echo.Context) error {
+func GetAvatarRequest(c echo.Context) error {
 	device := c.FormValue("device")
 	loginForSearch := c.FormValue("loginforsearch")
 	keyForServerDataBase := c.FormValue("forserver")
 	if device == "" || loginForSearch == "" || keyForServerDataBase == "" {
-		countInvalidRequests += 1
+		CountInvalidRequests += 1
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 

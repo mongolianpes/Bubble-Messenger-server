@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"crypto/rand"
@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"server/internal/crypto"
 	"strings"
 	"sync"
 	"time"
+
+	"server/internal/crypto"
+	"server/internal/writer"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -32,9 +34,16 @@ type Dialog struct {
 	Mu           sync.RWMutex
 }
 
-var audioDialogsMu sync.RWMutex
+type Message struct {
+	Sender   string
+	Message  string
+	SendTime time.Time
+}
 
-func sendMessageRequest(c echo.Context) error {
+var audioDialogsMu sync.RWMutex
+var saveMessagesManager = writer.NewFileWriterManager(2 * time.Minute)
+
+func SendMessageRequest(c echo.Context) error {
 	var response string
 	senderLogin := c.FormValue("senderlogin")
 	senderPassword := c.FormValue("senderpassword")
@@ -43,7 +52,7 @@ func sendMessageRequest(c echo.Context) error {
 	device := c.FormValue("device")
 	keyForServerDataBase := c.FormValue("forserver")
 	if senderLogin == "" || senderPassword == "" || receiverLogin == "" || message == "" || device == "" || keyForServerDataBase == "" {
-		countInvalidRequests += 1
+		CountInvalidRequests += 1
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
@@ -242,13 +251,13 @@ func sendMessageRequest(c echo.Context) error {
 	}
 }
 
-func checkMessageRequest(c echo.Context) error {
+func CheckMessageRequest(c echo.Context) error {
 	login := c.FormValue("login")
 	password := c.FormValue("password")
 	device := c.FormValue("device")
 	keyForServerDataBase := c.FormValue("forserver")
 	if device == "" || login == "" || password == "" || keyForServerDataBase == "" {
-		countInvalidRequests += 1
+		CountInvalidRequests += 1
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
@@ -351,13 +360,13 @@ func checkMessageRequest(c echo.Context) error {
 	return c.JSON(http.StatusOK, request)
 }
 
-func delMessagesRequest(c echo.Context) error {
+func DelMessagesRequest(c echo.Context) error {
 	login := c.FormValue("login")
 	password := c.FormValue("password")
 	device := c.FormValue("device")
 	keyForServerDataBase := c.FormValue("forserver")
 	if device == "" || login == "" || password == "" || keyForServerDataBase == "" {
-		countInvalidRequests += 1
+		CountInvalidRequests += 1
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 

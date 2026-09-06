@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"encoding/gob"
@@ -32,12 +32,12 @@ type FindUser struct {
 	Name  string `json:"name"`
 }
 
-func searchUserRequest(c echo.Context) error {
+func SearchUserRequest(c echo.Context) error {
 	device := c.FormValue("device")
 	loginForSearch := c.FormValue("loginforsearch")
 	keyForServerDataBase := c.FormValue("forserver")
 	if device == "" || loginForSearch == "" || keyForServerDataBase == "" {
-		countInvalidRequests += 1
+		CountInvalidRequests += 1
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
@@ -164,7 +164,7 @@ func sortUsersInSearch(findLogins *[]FindUser, loginForSearch string) {
 	}
 }
 
-func savePopularUsers() {
+func SavePopularUsers() {
 	var mostPopularToday *PopularUser
 	haveUserToChange := false
 	for userLogin, user := range popularTodayUsers {
@@ -207,10 +207,10 @@ func savePopularUsers() {
 		return
 	}
 
-	serverRoutineLog.Print("Успешное обновление популярных пользователей")
+	ServerRoutineLog.Print("Успешное обновление популярных пользователей")
 }
 
-func loadPopularUsers() {
+func LoadPopularUsers() {
 	file, err := os.Open("popularAlwaysUsers")
 	if err != nil {
 		errServerRoutineLog.Print("Не удалось открыть файл с популярными пользователями")
@@ -224,5 +224,5 @@ func loadPopularUsers() {
 		return
 	}
 
-	serverRoutineLog.Print("Успешное чтение популярных пользователей")
+	ServerRoutineLog.Print("Успешное чтение популярных пользователей")
 }
