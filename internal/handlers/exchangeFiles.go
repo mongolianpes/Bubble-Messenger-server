@@ -8,6 +8,7 @@ import (
 	"server/internal/crypto"
 	"time"
 
+	"server/internal/auth"
 	"server/internal/db"
 
 	"github.com/labstack/echo/v4"
@@ -43,15 +44,9 @@ func SendFile(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	fileData, err := os.ReadFile(fmt.Sprintf(db.IdsDir, req.Device[:220]))
+	key, err := auth.GetKey(req.Device, req.KeyForServerDataBase)
 	if err != nil {
-		usersRequestsLog.Printf("Попытка отправки запроса от незарегистрированного устройства Login %s, Device %s", req.Sender, req.Device)
-		return c.String(http.StatusBadRequest, "This device is not registered")
-	}
-	key, err := crypto.StringDecrypt(string(fileData), req.KeyForServerDataBase+db.SecretServerSalt)
-	if err != nil {
-		errRequestsLog.Printf("Сообщение клиента не удалось расшифровать. Device %s", req.Device)
-		return c.String(http.StatusBadRequest, "Decrypted error")
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
 	req.Sender, err = crypto.StringDecrypt(req.Sender, key)
 	if err != nil {
@@ -145,15 +140,9 @@ func GetFileRequest(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	fileData, err := os.ReadFile(fmt.Sprintf(db.IdsDir, device[:220]))
+	key, err := auth.GetKey(device, keyForServerDataBase)
 	if err != nil {
-		usersRequestsLog.Printf("Попытка отправки запроса от незарегистрированного устройства Login %s, Device %s", login, device)
-		return c.String(http.StatusBadRequest, "This device is not registered")
-	}
-	key, err := crypto.StringDecrypt(string(fileData), keyForServerDataBase+db.SecretServerSalt)
-	if err != nil {
-		errRequestsLog.Printf("Сообщение клиента не удалось расшифровать. Device %s", device)
-		return c.String(http.StatusBadRequest, "Decrypted error")
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
 	login, err = crypto.StringDecrypt(login, key)
 	if err != nil {
@@ -205,15 +194,9 @@ func DelFileRequest(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	fileData, err := os.ReadFile(fmt.Sprintf(db.IdsDir, device[:220]))
+	key, err := auth.GetKey(device, keyForServerDataBase)
 	if err != nil {
-		usersRequestsLog.Printf("Попытка отправки запроса от незарегистрированного устройства Login %s, Device %s", login, device)
-		return c.String(http.StatusBadRequest, "This device is not registered")
-	}
-	key, err := crypto.StringDecrypt(string(fileData), keyForServerDataBase+db.SecretServerSalt)
-	if err != nil {
-		errRequestsLog.Printf("Сообщение клиента не удалось расшифровать. Device %s", device)
-		return c.String(http.StatusBadRequest, "Unknow error")
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
 	login, err = crypto.StringDecrypt(login, key)
 	if err != nil {
@@ -259,16 +242,9 @@ func SetAvatarRequest(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	fileData, err := os.ReadFile(fmt.Sprintf(db.IdsDir, req.DeviceInfo[:220]))
+	key, err := auth.GetKey(req.DeviceInfo, req.KeyForServerDataBase)
 	if err != nil {
-		usersRequestsLog.Printf("Попытка отправки запроса от незарегистрированного устройства Login %s, Device %s", req.Login, req.DeviceInfo)
-		return c.String(http.StatusBadRequest, "This device is not registered")
-	}
-	key, err := crypto.StringDecrypt(string(fileData), req.KeyForServerDataBase+db.SecretServerSalt)
-	if err != nil {
-		errRequestsLog.Printf("Сообщение клиента не удалось расшифровать. Device %s", req.DeviceInfo)
-		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)
-		return c.String(http.StatusBadRequest, encryptResp)
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
 	req.Login, err = crypto.StringDecrypt(req.Login, key)
 	if err != nil {
@@ -310,15 +286,9 @@ func GetAvatarRequest(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	fileData, err := os.ReadFile(fmt.Sprintf(db.IdsDir, device[:220]))
+	key, err := auth.GetKey(device, keyForServerDataBase)
 	if err != nil {
-		usersRequestsLog.Printf("Попытка отправки запроса от незарегистрированного устройства LoginForSearch %s, Device %s", loginForSearch, device)
-		return c.String(http.StatusBadRequest, "This device is not registered")
-	}
-	key, err := crypto.StringDecrypt(string(fileData), keyForServerDataBase+db.SecretServerSalt)
-	if err != nil {
-		errRequestsLog.Printf("Сообщение клиента не удалось расшифровать. Device %s", device)
-		return c.String(http.StatusBadRequest, "Unknow error")
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
 	loginForSearch, err = crypto.StringDecrypt(loginForSearch, key)
 	if err != nil {

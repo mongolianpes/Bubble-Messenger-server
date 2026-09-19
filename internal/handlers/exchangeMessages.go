@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"server/internal/auth"
 	"server/internal/crypto"
 	"server/internal/db"
 	"server/internal/writer"
@@ -57,15 +58,9 @@ func SendMessageRequest(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	fileData, err := os.ReadFile(fmt.Sprintf(db.IdsDir, device[:220]))
+	key, err := auth.GetKey(device, keyForServerDataBase)
 	if err != nil {
-		usersRequestsLog.Printf("Попытка отправки запроса от незарегистрированного устройства Login %s, Device %s", senderLogin, device)
-		return c.String(http.StatusBadRequest, "This device is not registered")
-	}
-	key, err := crypto.StringDecrypt(string(fileData), keyForServerDataBase+db.SecretServerSalt)
-	if err != nil {
-		errRequestsLog.Printf("Сообщение клиента не удалось расшифровать. Device %s", device)
-		return c.String(http.StatusBadRequest, "Unknow error")
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
 	senderLogin, err = crypto.StringDecrypt(senderLogin, key)
 	if err != nil || senderLogin == "" {
@@ -262,16 +257,9 @@ func CheckMessageRequest(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	fileData, err := os.ReadFile(fmt.Sprintf(db.IdsDir, device[:220]))
+	key, err := auth.GetKey(device, keyForServerDataBase)
 	if err != nil {
-		usersRequestsLog.Printf("Попытка отправки запроса от незарегистрированного устройства Login %s, Device %s", login, device)
-		return c.String(http.StatusBadRequest, "This device is not registered")
-	}
-	key, err := crypto.StringDecrypt(string(fileData), keyForServerDataBase+db.SecretServerSalt)
-	if err != nil {
-		errRequestsLog.Printf("Сообщение клиента не удалось расшифровать. Device %s", device)
-		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)
-		return c.String(http.StatusBadRequest, encryptResp)
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
 	login, err = crypto.StringDecrypt(login, key)
 	if err != nil {
@@ -371,16 +359,9 @@ func DelMessagesRequest(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	fileData, err := os.ReadFile(fmt.Sprintf(db.IdsDir, device[:220]))
+	key, err := auth.GetKey(device, keyForServerDataBase)
 	if err != nil {
-		usersRequestsLog.Printf("Попытка отправки запроса от незарегистрированного устройства Login %s, Device %s", login, device)
-		return c.String(http.StatusBadRequest, "This device is not registered")
-	}
-	key, err := crypto.StringDecrypt(string(fileData), keyForServerDataBase+db.SecretServerSalt)
-	if err != nil {
-		errRequestsLog.Printf("Сообщение клиента не удалось расшифровать. Device %s", device)
-		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)
-		return c.String(http.StatusInternalServerError, encryptResp)
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
 	login, err = crypto.StringDecrypt(login, key)
 	if err != nil {
