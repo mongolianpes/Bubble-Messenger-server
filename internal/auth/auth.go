@@ -151,16 +151,6 @@ func Register(ctx context.Context, rdb rdb.DB, login, name, password, device, ke
 		return key, errors.New("Failed to create messaging feature")
 	}
 
-	encryptedKey, err := crypto.StringEncrypt([]byte(key), keyForServerDataBase+db.SecretServerSalt)
-	if err != nil {
-		os.RemoveAll(fmt.Sprintf(db.UsersDir, login))
-		return key, errors.New("Unknown error")
-	}
-	if err = os.WriteFile(fmt.Sprintf(db.IdsDir, device[:220]), []byte(encryptedKey), db.ValuesAccessFile); err != nil {
-		os.RemoveAll(fmt.Sprintf(db.UsersDir, login))
-		return key, errors.New("Unknown error")
-	}
-
 	return key, nil
 }
 
@@ -188,14 +178,6 @@ func Auth(ctx context.Context, rdb rdb.DB, login, password, device, keyForServer
 
 	if !crypto.VerifyPassword(fmt.Sprintf(db.PathToUserPassword, login), password) {
 		return "", key, errors.New("Incorrect login or password")
-	}
-
-	encryptKey, err := crypto.StringEncrypt([]byte(key), keyForServerDataBase+db.SecretServerSalt)
-	if err != nil {
-		return "", key, errors.New("Unknow error")
-	}
-	if err = os.WriteFile(fmt.Sprintf(db.IdsDir, device[:220]), []byte(encryptKey), db.ValuesAccessFile); err != nil {
-		return "", key, errors.New("Unable to process data")
 	}
 
 	userNameByte, err := os.ReadFile(fmt.Sprintf(db.PathToUserName, login))

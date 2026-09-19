@@ -1,7 +1,6 @@
 package db
 
 const (
-	IdsDir                         = "ids/%s"
 	UsersDir                       = "users/%s"
 	PathToUserName                 = "users/%s/name"
 	PathToUserPassword             = "users/%s/password"
@@ -16,7 +15,6 @@ const (
 )
 
 const (
-	SecretServerSalt = "al2esad;famfopa14-,410-qu82304dfoaspddasdsdo934idsadasd342141das"
 	ValuesAccessFile = 0600
 	ValueAccessDir   = 0700
 )
