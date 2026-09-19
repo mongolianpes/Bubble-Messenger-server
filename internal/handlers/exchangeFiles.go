@@ -6,10 +6,12 @@ import (
 	"net/http"
 	"os"
 	"server/internal/crypto"
+	"server/internal/models"
 	"time"
 
 	"server/internal/auth"
 	"server/internal/db"
+	"server/internal/writer"
 
 	"github.com/labstack/echo/v4"
 )
@@ -111,10 +113,10 @@ func SendFile(c echo.Context) error {
 
 	pathToFileWithMessages := fmt.Sprintf(db.PathToUserMessagesDir, req.Receiver)
 
-	messageData := Message{
-		req.Sender,
-		"p\\" + req.FileName + "\\" + fileNameInDatabase,
-		now,
+	messageData := models.UserMessage{
+		Sender:   req.Sender,
+		Message:  "p\\" + req.FileName + "\\" + fileNameInDatabase,
+		SendTime: now,
 	}
 
 	jsonMessageData, err := json.Marshal(messageData)
@@ -123,7 +125,7 @@ func SendFile(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
 
-	saveMessagesManager.Write(pathToFileWithMessages, jsonMessageData)
+	writer.SaveMessagesManager.Write(pathToFileWithMessages, jsonMessageData)
 
 	usersRequestsLog.Printf("Запрос sendfile. Sender: %s, Receiver: %s, FileSize: %v. DeviceID: %s", req.Sender, req.Receiver, len(req.File), req.Device)
 	return c.NoContent(http.StatusOK)
