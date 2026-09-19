@@ -19,7 +19,7 @@ type KeyExchangeRequest struct {
 	IsRegistring    bool   `json:"is_registring"`
 }
 
-func ExchangeKeyReqest(c echo.Context) error {
+func ExchangeKey(c echo.Context) error {
 	var req KeyExchangeRequest
 	if err := c.Bind(&req); err != nil {
 		CountInvalidRequests += 1
@@ -44,7 +44,7 @@ func ExchangeKeyReqest(c echo.Context) error {
 	return c.JSON(http.StatusOK, response)
 }
 
-func RegReqest(c echo.Context) error {
+func Reg(c echo.Context) error {
 	login := c.FormValue("login")
 	name := c.FormValue("name")
 	password := c.FormValue("password")
@@ -71,7 +71,7 @@ func RegReqest(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func AuthReqest(c echo.Context) error {
+func Auth(c echo.Context) error {
 	login := c.FormValue("login")
 	password := c.FormValue("password")
 	device := c.FormValue("device")

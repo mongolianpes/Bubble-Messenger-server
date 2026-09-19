@@ -6,6 +6,7 @@ import (
 
 	"server/internal/auth"
 	"server/internal/handlers"
+	"server/internal/search"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -21,7 +22,7 @@ Start on ports: 23099, 23098, 23097
 `, echo.Version)
 
 	handlers.OpenLogFiles()
-	handlers.LoadPopularUsers()
+	search.LoadPopularUsers()
 	go auth.CheckStartRegAuthUsersTime()
 	go handlers.CheckLastUsedTimeInAudioDialog()
 
@@ -30,10 +31,10 @@ Start on ports: 23099, 23098, 23097
 		mainService.Logger.SetOutput(handlers.ErrEchoLog.Writer())
 		mainService.Use(middleware.Recover())
 		mainService.HideBanner = true
-		mainService.POST("/exchangekey", handlers.ExchangeKeyReqest)
-		mainService.POST("/reg", handlers.RegReqest)
-		mainService.POST("/auth", handlers.AuthReqest)
-		mainService.POST("/searchuser", handlers.SearchUserRequest)
+		mainService.POST("/exchangekey", handlers.ExchangeKey)
+		mainService.POST("/reg", handlers.Reg)
+		mainService.POST("/auth", handlers.Auth)
+		mainService.POST("/searchuser", handlers.SearchUser)
 		mainService.POST("/sendmessage", handlers.SendMessageRequest)
 		mainService.POST("/checkmessage", handlers.CheckMessageRequest)
 
@@ -78,7 +79,7 @@ Start on ports: 23099, 23098, 23097
 		countHours += 1
 		if countHours >= 22 {
 			countHours = 0
-			handlers.SavePopularUsers()
+			search.SavePopularUsers()
 			handlers.ServerRoutineLog.Print("Сохранены популярные пользователи")
 		}
 
