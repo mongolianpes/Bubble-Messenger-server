@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"server/internal/auth"
 	"server/internal/handlers"
 
 	"github.com/labstack/echo/v4"
@@ -21,7 +22,7 @@ Start on ports: 23099, 23098, 23097
 
 	handlers.OpenLogFiles()
 	handlers.LoadPopularUsers()
-	go handlers.CheckStartRegAuthUsersTime()
+	go auth.CheckStartRegAuthUsersTime()
 	go handlers.CheckLastUsedTimeInAudioDialog()
 
 	go func() {

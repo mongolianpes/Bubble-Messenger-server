@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"server/internal/crypto"
+	"server/internal/db"
 	"server/internal/writer"
 
 	"github.com/google/uuid"
@@ -56,12 +57,12 @@ func SendMessageRequest(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	fileData, err := os.ReadFile(fmt.Sprintf(idsDir, device[:220]))
+	fileData, err := os.ReadFile(fmt.Sprintf(db.IdsDir, device[:220]))
 	if err != nil {
 		usersRequestsLog.Printf("Попытка отправки запроса от незарегистрированного устройства Login %s, Device %s", senderLogin, device)
 		return c.String(http.StatusBadRequest, "This device is not registered")
 	}
-	key, err := crypto.StringDecrypt(string(fileData), keyForServerDataBase+secretServerSalt)
+	key, err := crypto.StringDecrypt(string(fileData), keyForServerDataBase+db.SecretServerSalt)
 	if err != nil {
 		errRequestsLog.Printf("Сообщение клиента не удалось расшифровать. Device %s", device)
 		return c.String(http.StatusBadRequest, "Unknow error")
@@ -124,16 +125,16 @@ func SendMessageRequest(c echo.Context) error {
 		response = "Audio dialog stop"
 	}
 
-	if _, err = os.Stat(fmt.Sprintf(usersDir, senderLogin)); err != nil {
+	if _, err = os.Stat(fmt.Sprintf(db.UsersDir, senderLogin)); err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte("There is no sender with this login"), key)
 		return c.String(http.StatusBadRequest, encryptResp)
 	}
-	if _, err = os.Stat(fmt.Sprintf(usersDir, receiverLogin)); err != nil {
+	if _, err = os.Stat(fmt.Sprintf(db.UsersDir, receiverLogin)); err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte("There is no receiver with this login"), key)
 		return c.String(http.StatusBadRequest, encryptResp)
 	}
 
-	if !crypto.VerifyPassword(fmt.Sprintf(pathToUserPassword, senderLogin), senderPassword) {
+	if !crypto.VerifyPassword(fmt.Sprintf(db.PathToUserPassword, senderLogin), senderPassword) {
 		errRequestsLog.Printf("Неверный пароль Login %s, Device %s", senderLogin, device)
 		encryptResp, _ := crypto.StringEncrypt([]byte("Incorrect login or password"), key)
 		return c.String(http.StatusBadRequest, encryptResp)
@@ -156,7 +157,7 @@ func SendMessageRequest(c echo.Context) error {
 		time.Now(),
 	}
 
-	pathToFileWithMessages = fmt.Sprintf(pathToUserMessagesDir, receiverLogin)
+	pathToFileWithMessages = fmt.Sprintf(db.PathToUserMessagesDir, receiverLogin)
 
 	// подумать о размере, потому что можно сжимать даже если отправляется из файла newMessages (сделать размер вместо 800 намного больше, так чтобы в сжатом состоянии 1000)
 	// if statsNewMessages, err := os.Stat(pathToFileWithMessages); err == nil {
@@ -261,12 +262,12 @@ func CheckMessageRequest(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	fileData, err := os.ReadFile(fmt.Sprintf(idsDir, device[:220]))
+	fileData, err := os.ReadFile(fmt.Sprintf(db.IdsDir, device[:220]))
 	if err != nil {
 		usersRequestsLog.Printf("Попытка отправки запроса от незарегистрированного устройства Login %s, Device %s", login, device)
 		return c.String(http.StatusBadRequest, "This device is not registered")
 	}
-	key, err := crypto.StringDecrypt(string(fileData), keyForServerDataBase+secretServerSalt)
+	key, err := crypto.StringDecrypt(string(fileData), keyForServerDataBase+db.SecretServerSalt)
 	if err != nil {
 		errRequestsLog.Printf("Сообщение клиента не удалось расшифровать. Device %s", device)
 		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)
@@ -283,7 +284,7 @@ func CheckMessageRequest(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
 
-	if !crypto.VerifyPassword(fmt.Sprintf(pathToUserPassword, login), password) {
+	if !crypto.VerifyPassword(fmt.Sprintf(db.PathToUserPassword, login), password) {
 		errRequestsLog.Printf("Неверный пароль Login %s, Device %s", login, device)
 		encryptResp, _ := crypto.StringEncrypt([]byte("Incorrect login or password"), key)
 		return c.String(http.StatusBadRequest, encryptResp)
@@ -323,7 +324,7 @@ func CheckMessageRequest(c echo.Context) error {
 	// resultMessages := string(dataMessages) //+ strInitDialogs
 	// resultMessages := strInitDialogs
 
-	blocksMessages, err := os.ReadDir(fmt.Sprintf(pathToUserMessagesDir, login))
+	blocksMessages, err := os.ReadDir(fmt.Sprintf(db.PathToUserMessagesDir, login))
 	if err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte("Database callback error 1"), key)
 		return c.String(http.StatusInternalServerError, encryptResp)
@@ -332,7 +333,7 @@ func CheckMessageRequest(c echo.Context) error {
 	var blockMessages []byte
 	var statusGzip = false
 	if len(blocksMessages) > 1 {
-		pathToBlockMessages := fmt.Sprintf(pathToUserBlockMessagesArchive, login, blocksMessages[0].Name())
+		pathToBlockMessages := fmt.Sprintf(db.PathToUserBlockMessagesArchive, login, blocksMessages[0].Name())
 		blockMessages, err = os.ReadFile(pathToBlockMessages)
 		if err != nil {
 			usersRequestsLog.Printf("Запрос checkmessages. Номер блока сообщений к отпрвке: %s, Login: %s, DeviceID: %s", blocksMessages[0].Name(), login, device)
@@ -341,7 +342,7 @@ func CheckMessageRequest(c echo.Context) error {
 		}
 		statusGzip = strings.HasSuffix(blocksMessages[0].Name(), ".gz")
 	} else if len(blockMessages) == 1 {
-		blockMessages, err = os.ReadFile(fmt.Sprintf(pathToUserNewMessagesFile, login))
+		blockMessages, err = os.ReadFile(fmt.Sprintf(db.PathToUserNewMessagesFile, login))
 		if err != nil {
 			usersRequestsLog.Printf("Запрос checkmessages. Номер блока сообщений к отпрвке: newMessages, Login: %s, DeviceID: %s", login, device)
 			encryptResp, _ := crypto.StringEncrypt([]byte("Database callback error 3"), key)
@@ -370,12 +371,12 @@ func DelMessagesRequest(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	fileData, err := os.ReadFile(fmt.Sprintf(idsDir, device[:220]))
+	fileData, err := os.ReadFile(fmt.Sprintf(db.IdsDir, device[:220]))
 	if err != nil {
 		usersRequestsLog.Printf("Попытка отправки запроса от незарегистрированного устройства Login %s, Device %s", login, device)
 		return c.String(http.StatusBadRequest, "This device is not registered")
 	}
-	key, err := crypto.StringDecrypt(string(fileData), keyForServerDataBase+secretServerSalt)
+	key, err := crypto.StringDecrypt(string(fileData), keyForServerDataBase+db.SecretServerSalt)
 	if err != nil {
 		errRequestsLog.Printf("Сообщение клиента не удалось расшифровать. Device %s", device)
 		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)
@@ -392,33 +393,33 @@ func DelMessagesRequest(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
 
-	if !crypto.VerifyPassword(fmt.Sprintf(pathToUserPassword, login), password) {
+	if !crypto.VerifyPassword(fmt.Sprintf(db.PathToUserPassword, login), password) {
 		errRequestsLog.Printf("Неверный пароль Login %s, Device %s", login, device)
 		encryptResp, _ := crypto.StringEncrypt([]byte("Incorrect login or password"), key)
 		return c.String(http.StatusBadRequest, encryptResp)
 	}
 
-	countBlocksMessages, err := os.ReadDir(fmt.Sprintf(pathToUserMessagesDir, login))
+	countBlocksMessages, err := os.ReadDir(fmt.Sprintf(db.PathToUserMessagesDir, login))
 	if err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte("Database callback error 1"), key)
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
 
-	blocksMessages, err := os.ReadDir(fmt.Sprintf(pathToUserMessagesDir, login))
+	blocksMessages, err := os.ReadDir(fmt.Sprintf(db.PathToUserMessagesDir, login))
 	if err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte("Database callback error 2"), key)
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
 
 	if len(countBlocksMessages) > 1 {
-		pathToBlockMessages := fmt.Sprintf(pathToUserBlockMessagesArchive, login, blocksMessages[0].Name())
+		pathToBlockMessages := fmt.Sprintf(db.PathToUserBlockMessagesArchive, login, blocksMessages[0].Name())
 		if err := os.Remove(pathToBlockMessages); err != nil {
 			errRequestsLog.Printf("Запрос delmessages. Ошибка в блоках сообщений. Номер блока сообщений к удалению: %s Login %s, Device %s", blocksMessages[0].Name(), login, device)
 			encryptResp, _ := crypto.StringEncrypt([]byte("database error: "+err.Error()), key)
 			return c.String(http.StatusBadRequest, encryptResp)
 		}
 	} else {
-		if err := os.Remove(fmt.Sprintf(pathToUserNewMessagesFile, login)); err != nil {
+		if err := os.Remove(fmt.Sprintf(db.PathToUserNewMessagesFile, login)); err != nil {
 			encryptResp, _ := crypto.StringEncrypt([]byte("No new messages"), key)
 			return c.String(http.StatusBadRequest, encryptResp)
 		}

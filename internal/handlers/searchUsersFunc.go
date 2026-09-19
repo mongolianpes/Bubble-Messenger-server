@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"server/internal/db"
+
 	"github.com/labstack/echo/v4"
 )
 
@@ -41,12 +43,12 @@ func SearchUserRequest(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	fileData, err := os.ReadFile(fmt.Sprintf(idsDir, device[:220]))
+	fileData, err := os.ReadFile(fmt.Sprintf(db.IdsDir, device[:220]))
 	if err != nil {
 		usersRequestsLog.Printf("Попытка отправки запроса от незарегистрированного устройства LoginForSearch %s, Device %s", loginForSearch, device)
 		return c.String(http.StatusBadRequest, "This device is not registered")
 	}
-	key, err := crypto.StringDecrypt(string(fileData), keyForServerDataBase+secretServerSalt)
+	key, err := crypto.StringDecrypt(string(fileData), keyForServerDataBase+db.SecretServerSalt)
 	if err != nil {
 		usersRequestsLog.Printf("Попытка отправки запроса от незарегистрированного устройства LoginForSearch %s, Device %s", loginForSearch, device)
 		encryptResp, _ := crypto.StringEncrypt([]byte("Unknown error"), key)
@@ -138,7 +140,7 @@ func sortUsersInSearch(findLogins *[]FindUser, loginForSearch string) {
 		}
 	}
 
-	if userName, err := os.ReadFile(fmt.Sprintf(pathToUserName, loginForSearch)); !os.IsNotExist(err) {
+	if userName, err := os.ReadFile(fmt.Sprintf(db.PathToUserName, loginForSearch)); !os.IsNotExist(err) {
 		findUser := FindUser{
 			Login: loginForSearch,
 			Name:  string(userName),
