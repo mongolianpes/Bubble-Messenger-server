@@ -6,7 +6,6 @@ import (
 	"server/internal/crypto"
 	"server/internal/profile"
 
-	"server/internal/auth"
 	"server/internal/db"
 	"server/internal/messages"
 
@@ -31,7 +30,7 @@ type Avatar struct {
 	KeyForServerDataBase string `json:"forserver"`
 }
 
-func SendFile(c echo.Context) error {
+func (h *Handler) SendFile(c echo.Context) error {
 	var req SendFileRequest
 	if err := c.Bind(&req); err != nil {
 		CountInvalidRequests += 1
@@ -43,10 +42,11 @@ func SendFile(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	key, err := auth.GetKey(req.Device, req.KeyForServerDataBase)
+	key, err := h.RedisDB.GetKey(c.Request().Context(), req.Device)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
+
 	req.Sender, err = crypto.StringDecrypt(req.Sender, key)
 	if err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)
@@ -90,7 +90,7 @@ func SendFile(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func GetFile(c echo.Context) error {
+func (h *Handler) GetFile(c echo.Context) error {
 	device := c.FormValue("device")
 	login := c.FormValue("login")
 	password := c.FormValue("password")
@@ -101,10 +101,11 @@ func GetFile(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	key, err := auth.GetKey(device, keyForServerDataBase)
+	key, err := h.RedisDB.GetKey(c.Request().Context(), device)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
+
 	login, err = crypto.StringDecrypt(login, key)
 	if err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)
@@ -144,7 +145,7 @@ func GetFile(c echo.Context) error {
 	return c.JSON(http.StatusOK, file)
 }
 
-func DelFile(c echo.Context) error {
+func (h *Handler) DelFile(c echo.Context) error {
 	device := c.FormValue("device")
 	login := c.FormValue("login")
 	password := c.FormValue("password")
@@ -155,10 +156,11 @@ func DelFile(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	key, err := auth.GetKey(device, keyForServerDataBase)
+	key, err := h.RedisDB.GetKey(c.Request().Context(), device)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
+
 	login, err = crypto.StringDecrypt(login, key)
 	if err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)
@@ -186,7 +188,7 @@ func DelFile(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func SetAvatar(c echo.Context) error {
+func (h *Handler) SetAvatar(c echo.Context) error {
 	var req Avatar
 	if err := c.Bind(&req); err != nil {
 		CountInvalidRequests += 1
@@ -198,10 +200,11 @@ func SetAvatar(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	key, err := auth.GetKey(req.DeviceInfo, req.KeyForServerDataBase)
+	key, err := h.RedisDB.GetKey(c.Request().Context(), req.DeviceInfo)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
+
 	req.Login, err = crypto.StringDecrypt(req.Login, key)
 	if err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)
@@ -233,7 +236,7 @@ func SetAvatar(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func GetAvatar(c echo.Context) error {
+func (h *Handler) GetAvatar(c echo.Context) error {
 	device := c.FormValue("device")
 	loginForSearch := c.FormValue("loginforsearch")
 	keyForServerDataBase := c.FormValue("forserver")
@@ -242,10 +245,11 @@ func GetAvatar(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	key, err := auth.GetKey(device, keyForServerDataBase)
+	key, err := h.RedisDB.GetKey(c.Request().Context(), device)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
+
 	loginForSearch, err = crypto.StringDecrypt(loginForSearch, key)
 	if err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)

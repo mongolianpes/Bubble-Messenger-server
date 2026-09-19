@@ -1,7 +1,6 @@
 package db
 
 const (
-	DevicesDir                     = "devices/%s"
 	IdsDir                         = "ids/%s"
 	UsersDir                       = "users/%s"
 	PathToUserName                 = "users/%s/name"

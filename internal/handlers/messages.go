@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"server/internal/auth"
 	"server/internal/crypto"
 	"server/internal/db"
 	"server/internal/messages"
@@ -36,7 +35,7 @@ type RequestCheckMessages struct {
 
 var audioDialogsMu sync.RWMutex
 
-func SendMessage(c echo.Context) error {
+func (h *Handler) SendMessage(c echo.Context) error {
 	var response string
 	senderLogin := c.FormValue("senderlogin")
 	senderPassword := c.FormValue("senderpassword")
@@ -49,10 +48,11 @@ func SendMessage(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	key, err := auth.GetKey(device, keyForServerDataBase)
+	key, err := h.RedisDB.GetKey(c.Request().Context(), device)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
+
 	senderLogin, err = crypto.StringDecrypt(senderLogin, key)
 	if err != nil || senderLogin == "" {
 		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)
@@ -126,7 +126,7 @@ func SendMessage(c echo.Context) error {
 	}
 }
 
-func CheckMessage(c echo.Context) error {
+func (h *Handler) CheckMessage(c echo.Context) error {
 	login := c.FormValue("login")
 	password := c.FormValue("password")
 	device := c.FormValue("device")
@@ -136,10 +136,11 @@ func CheckMessage(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	key, err := auth.GetKey(device, keyForServerDataBase)
+	key, err := h.RedisDB.GetKey(c.Request().Context(), device)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
+
 	login, err = crypto.StringDecrypt(login, key)
 	if err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)
@@ -173,7 +174,7 @@ func CheckMessage(c echo.Context) error {
 	return c.JSON(http.StatusOK, request)
 }
 
-func DelMessages(c echo.Context) error {
+func (h *Handler) DelMessages(c echo.Context) error {
 	login := c.FormValue("login")
 	password := c.FormValue("password")
 	device := c.FormValue("device")
@@ -183,10 +184,11 @@ func DelMessages(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	key, err := auth.GetKey(device, keyForServerDataBase)
+	key, err := h.RedisDB.GetKey(c.Request().Context(), device)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
+
 	login, err = crypto.StringDecrypt(login, key)
 	if err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)

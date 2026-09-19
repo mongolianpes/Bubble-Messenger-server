@@ -19,7 +19,7 @@ type KeyExchangeRequest struct {
 	IsRegistring    bool   `json:"is_registring"`
 }
 
-func ExchangeKey(c echo.Context) error {
+func (h *TLSHandler) TLS(c echo.Context) error {
 	var req KeyExchangeRequest
 	if err := c.Bind(&req); err != nil {
 		CountInvalidRequests += 1
@@ -44,7 +44,7 @@ func ExchangeKey(c echo.Context) error {
 	return c.JSON(http.StatusOK, response)
 }
 
-func Reg(c echo.Context) error {
+func (h *Handler) Reg(c echo.Context) error {
 	login := c.FormValue("login")
 	name := c.FormValue("name")
 	password := c.FormValue("password")
@@ -55,7 +55,7 @@ func Reg(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	key, err := auth.Register(login, name, password, device, keyForServerDataBase)
+	key, err := auth.Register(c.Request().Context(), h.RedisDB, login, name, password, device, keyForServerDataBase)
 	if err != nil {
 		resp := ""
 		if key != "" {
@@ -71,7 +71,7 @@ func Reg(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func Auth(c echo.Context) error {
+func (h *Handler) Auth(c echo.Context) error {
 	login := c.FormValue("login")
 	password := c.FormValue("password")
 	device := c.FormValue("device")
@@ -81,7 +81,7 @@ func Auth(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	userName, key, err := auth.Auth(login, password, device, keyForServerDataBase)
+	userName, key, err := auth.Auth(c.Request().Context(), h.RedisDB, login, password, device, keyForServerDataBase)
 	if err != nil {
 		resp := ""
 		if key != "" {

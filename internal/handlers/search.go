@@ -5,14 +5,13 @@ import (
 	"net/http"
 	"server/internal/crypto"
 
-	"server/internal/auth"
 	"server/internal/models"
 	"server/internal/search"
 
 	"github.com/labstack/echo/v4"
 )
 
-func SearchUser(c echo.Context) error {
+func (h *Handler) SearchUser(c echo.Context) error {
 	device := c.FormValue("device")
 	loginForSearch := c.FormValue("loginforsearch")
 	keyForServerDataBase := c.FormValue("forserver")
@@ -21,10 +20,11 @@ func SearchUser(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	key, err := auth.GetKey(device, keyForServerDataBase)
+	key, err := h.RedisDB.GetKey(c.Request().Context(), device)
 	if err != nil {
-		return c.String(http.StatusBadRequest, err.Error())
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
+
 	loginForSearch, err = crypto.StringDecrypt(loginForSearch, key)
 	if err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)

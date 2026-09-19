@@ -1,14 +1,16 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"regexp"
+
 	"server/internal/crypto"
 	"server/internal/crypto/ecdh"
 	"server/internal/db"
-	"strings"
+	"server/internal/rdb"
 	"time"
 )
 
@@ -89,7 +91,7 @@ func ExchangeKey(isRegistring bool, clientPublicKey, id string) (string, error) 
 	return serverPublicKey, nil
 }
 
-func Register(login, name, password, device, keyForServerDataBase string) (string, error) {
+func Register(ctx context.Context, rdb rdb.DB, login, name, password, device, keyForServerDataBase string) (string, error) {
 	_, ok := registringUsers[device]
 	if !ok {
 		return "", errors.New("This request is not expected for you")
@@ -121,35 +123,8 @@ func Register(login, name, password, device, keyForServerDataBase string) (strin
 		return "", errors.New("Decryption error")
 	}
 
-	_, err = os.Stat(fmt.Sprintf(db.DevicesDir, device[:172]+device[220:]))
-	if err == nil {
-		decryptedLogins, err := crypto.FileStringDecrypt(fmt.Sprintf(db.DevicesDir, device[:172]+device[220:]), password, keyForServerDataBase)
-		if err != nil {
-			return key, errors.New("Unknown error1")
-		}
-
-		logins := strings.Split(decryptedLogins, "\n")
-		if len(logins) >= 2 {
-			return key, errors.New("You have registered many accounts")
-		}
-
-		if err = os.Mkdir(fmt.Sprintf(db.UsersDir, login), db.ValueAccessDir); err != nil {
-			return key, errors.New("A user with this login is already registered")
-		}
-
-		if err = crypto.FileStringEncrypt([]byte(logins[0]+"\n"+login), fmt.Sprintf(db.DevicesDir, device[:172]+device[220:]), password, keyForServerDataBase); err != nil {
-			os.RemoveAll(fmt.Sprintf(db.UsersDir, login))
-			return key, errors.New("Unknown error2")
-		}
-	} else {
-		if err = os.Mkdir(fmt.Sprintf(db.UsersDir, login), db.ValueAccessDir); err != nil {
-			return key, errors.New("A user with this login is already registered")
-		}
-
-		if err = crypto.FileStringEncrypt([]byte(login), fmt.Sprintf(db.DevicesDir, device[:172]+device[220:]), password, keyForServerDataBase); err != nil {
-			os.RemoveAll(fmt.Sprintf(db.UsersDir, login))
-			return key, err
-		}
+	if err := rdb.SetSession(ctx, device, key); err != nil {
+		return "", err
 	}
 
 	if err = os.WriteFile(fmt.Sprintf(db.PathToUserName, login), []byte(name), db.ValuesAccessFile); err != nil {
@@ -189,7 +164,7 @@ func Register(login, name, password, device, keyForServerDataBase string) (strin
 	return key, nil
 }
 
-func Auth(login, password, device, keyForServerDataBase string) (string, string, error) {
+func Auth(ctx context.Context, rdb rdb.DB, login, password, device, keyForServerDataBase string) (string, string, error) {
 	_, ok := authUsers[device]
 	if !ok {
 		return "", "", errors.New("This request is not expected for you")
@@ -226,6 +201,10 @@ func Auth(login, password, device, keyForServerDataBase string) (string, string,
 	userNameByte, err := os.ReadFile(fmt.Sprintf(db.PathToUserName, login))
 	if err != nil {
 		return "", key, errors.New("Unknow error")
+	}
+
+	if err := rdb.SetSession(ctx, device, key); err != nil {
+		return "", key, err
 	}
 
 	return string(userNameByte), key, nil

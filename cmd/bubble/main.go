@@ -21,6 +21,9 @@ func main() {
 Start on ports: 23099, 23098, 23097
 `, echo.Version)
 
+	hand := handlers.NewHand()
+	TLShand := handlers.NewTLSHand()
+
 	handlers.OpenLogFiles()
 	search.LoadPopularUsers()
 	go auth.CheckStartRegAuthUsersTime()
@@ -31,12 +34,12 @@ Start on ports: 23099, 23098, 23097
 		mainService.Logger.SetOutput(handlers.ErrEchoLog.Writer())
 		mainService.Use(middleware.Recover())
 		mainService.HideBanner = true
-		mainService.POST("/exchangekey", handlers.ExchangeKey)
-		mainService.POST("/reg", handlers.Reg)
-		mainService.POST("/auth", handlers.Auth)
-		mainService.POST("/searchuser", handlers.SearchUser)
-		mainService.POST("/sendmessage", handlers.SendMessage)
-		mainService.POST("/checkmessage", handlers.CheckMessage)
+		mainService.POST("/exchangekey", TLShand.TLS)
+		mainService.POST("/reg", hand.Reg)
+		mainService.POST("/auth", hand.Auth)
+		mainService.POST("/searchuser", hand.SearchUser)
+		mainService.POST("/sendmessage", hand.SendMessage)
+		mainService.POST("/checkmessage", hand.CheckMessage)
 
 		if err := mainService.Start(":23099"); err != nil {
 			handlers.ErrEchoLog.Printf("Ошибка основного сервиса: %s", err)
@@ -48,12 +51,12 @@ Start on ports: 23099, 23098, 23097
 		mediumSizeDataService.Logger.SetOutput(handlers.ErrEchoLog.Writer())
 		mediumSizeDataService.Use(middleware.Recover())
 		mediumSizeDataService.HideBanner = true
-		mediumSizeDataService.POST("/delmessages", handlers.DelMessages)
-		mediumSizeDataService.POST("/setavatar", handlers.SetAvatar)
-		mediumSizeDataService.POST("/getavatar", handlers.GetAvatar)
-		mediumSizeDataService.POST("/sendfile", handlers.SendFile)
-		mediumSizeDataService.POST("/getfile", handlers.GetFile)
-		mediumSizeDataService.POST("/delfile", handlers.DelFile)
+		mediumSizeDataService.POST("/delmessages", hand.DelMessages)
+		mediumSizeDataService.POST("/setavatar", hand.SetAvatar)
+		mediumSizeDataService.POST("/getavatar", hand.GetAvatar)
+		mediumSizeDataService.POST("/sendfile", hand.SendFile)
+		mediumSizeDataService.POST("/getfile", hand.GetFile)
+		mediumSizeDataService.POST("/delfile", hand.DelFile)
 
 		if err := mediumSizeDataService.Start(":23098"); err != nil {
 			handlers.ErrEchoLog.Printf("Ошибка сервиса принятия файлов: %s", err)
