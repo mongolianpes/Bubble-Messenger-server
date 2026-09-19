@@ -35,8 +35,8 @@ Start on ports: 23099, 23098, 23097
 		mainService.POST("/reg", handlers.Reg)
 		mainService.POST("/auth", handlers.Auth)
 		mainService.POST("/searchuser", handlers.SearchUser)
-		mainService.POST("/sendmessage", handlers.SendMessageRequest)
-		mainService.POST("/checkmessage", handlers.CheckMessageRequest)
+		mainService.POST("/sendmessage", handlers.SendMessage)
+		mainService.POST("/checkmessage", handlers.CheckMessage)
 
 		if err := mainService.Start(":23099"); err != nil {
 			handlers.ErrEchoLog.Printf("Ошибка основного сервиса: %s", err)
@@ -48,7 +48,7 @@ Start on ports: 23099, 23098, 23097
 		mediumSizeDataService.Logger.SetOutput(handlers.ErrEchoLog.Writer())
 		mediumSizeDataService.Use(middleware.Recover())
 		mediumSizeDataService.HideBanner = true
-		mediumSizeDataService.POST("/delmessages", handlers.DelMessagesRequest)
+		mediumSizeDataService.POST("/delmessages", handlers.DelMessages)
 		mediumSizeDataService.POST("/setavatar", handlers.SetAvatarRequest)
 		mediumSizeDataService.POST("/getavatar", handlers.GetAvatarRequest)
 		mediumSizeDataService.POST("/sendfile", handlers.SendFile)

@@ -36,7 +36,7 @@ type RequestCheckMessages struct {
 
 var audioDialogsMu sync.RWMutex
 
-func SendMessageRequest(c echo.Context) error {
+func SendMessage(c echo.Context) error {
 	var response string
 	senderLogin := c.FormValue("senderlogin")
 	senderPassword := c.FormValue("senderpassword")
@@ -126,7 +126,7 @@ func SendMessageRequest(c echo.Context) error {
 	}
 }
 
-func CheckMessageRequest(c echo.Context) error {
+func CheckMessage(c echo.Context) error {
 	login := c.FormValue("login")
 	password := c.FormValue("password")
 	device := c.FormValue("device")
@@ -173,7 +173,7 @@ func CheckMessageRequest(c echo.Context) error {
 	return c.JSON(http.StatusOK, request)
 }
 
-func DelMessagesRequest(c echo.Context) error {
+func DelMessages(c echo.Context) error {
 	login := c.FormValue("login")
 	password := c.FormValue("password")
 	device := c.FormValue("device")
