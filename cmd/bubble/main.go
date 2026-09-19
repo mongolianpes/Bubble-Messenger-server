@@ -49,11 +49,11 @@ Start on ports: 23099, 23098, 23097
 		mediumSizeDataService.Use(middleware.Recover())
 		mediumSizeDataService.HideBanner = true
 		mediumSizeDataService.POST("/delmessages", handlers.DelMessages)
-		mediumSizeDataService.POST("/setavatar", handlers.SetAvatarRequest)
-		mediumSizeDataService.POST("/getavatar", handlers.GetAvatarRequest)
+		mediumSizeDataService.POST("/setavatar", handlers.SetAvatar)
+		mediumSizeDataService.POST("/getavatar", handlers.GetAvatar)
 		mediumSizeDataService.POST("/sendfile", handlers.SendFile)
-		mediumSizeDataService.POST("/getfile", handlers.GetFileRequest)
-		mediumSizeDataService.POST("/delfile", handlers.DelFileRequest)
+		mediumSizeDataService.POST("/getfile", handlers.GetFile)
+		mediumSizeDataService.POST("/delfile", handlers.DelFile)
 
 		if err := mediumSizeDataService.Start(":23098"); err != nil {
 			handlers.ErrEchoLog.Printf("Ошибка сервиса принятия файлов: %s", err)

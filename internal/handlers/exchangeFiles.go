@@ -1,17 +1,14 @@
 package handlers
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"server/internal/crypto"
-	"server/internal/models"
-	"time"
+	"server/internal/profile"
 
 	"server/internal/auth"
 	"server/internal/db"
-	"server/internal/writer"
+	"server/internal/messages"
 
 	"github.com/labstack/echo/v4"
 )
@@ -73,15 +70,6 @@ func SendFile(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
 
-	if _, err = os.Stat(fmt.Sprintf(db.UsersDir, req.Sender)); err != nil {
-		encryptResp, _ := crypto.StringEncrypt([]byte("There is no sender with this login"), key)
-		return c.String(http.StatusInternalServerError, encryptResp)
-	}
-	if _, err = os.Stat(fmt.Sprintf(db.UsersDir, req.Receiver)); err != nil {
-		encryptResp, _ := crypto.StringEncrypt([]byte("There is no receiver with this login"), key)
-		return c.String(http.StatusInternalServerError, encryptResp)
-	}
-
 	req.FileName, err = crypto.StringDecrypt(req.FileName, key)
 	if err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)
@@ -93,45 +81,16 @@ func SendFile(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
 
-	now := time.Now()
-	fileNameInDatabase := fmt.Sprintf(
-		db.PathToUserUnreceivedFilesDir+"%s.%d%d%d%d%d%d",
-		req.Receiver,
-		req.FileName,
-		now.Year(),
-		now.YearDay(),
-		now.Hour(),
-		now.Minute(),
-		now.Second(),
-		now.Nanosecond(),
-	)
-
-	if err := os.WriteFile(fileNameInDatabase, req.File, db.ValuesAccessFile); err != nil {
-		encryptResp, _ := crypto.StringEncrypt([]byte("Failed to upload your file"), key)
+	if err := messages.SendFile(req.Sender, req.Receiver, req.FileName, req.File); err != nil {
+		encryptResp, _ := crypto.StringEncrypt([]byte(err.Error()), key)
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
-
-	pathToFileWithMessages := fmt.Sprintf(db.PathToUserMessagesDir, req.Receiver)
-
-	messageData := models.UserMessage{
-		Sender:   req.Sender,
-		Message:  "p\\" + req.FileName + "\\" + fileNameInDatabase,
-		SendTime: now,
-	}
-
-	jsonMessageData, err := json.Marshal(messageData)
-	if err != nil {
-		encryptResp, _ := crypto.StringEncrypt([]byte("Unable to process data"), key)
-		return c.String(http.StatusInternalServerError, encryptResp)
-	}
-
-	writer.SaveMessagesManager.Write(pathToFileWithMessages, jsonMessageData)
 
 	usersRequestsLog.Printf("Запрос sendfile. Sender: %s, Receiver: %s, FileSize: %v. DeviceID: %s", req.Sender, req.Receiver, len(req.File), req.Device)
 	return c.NoContent(http.StatusOK)
 }
 
-func GetFileRequest(c echo.Context) error {
+func GetFile(c echo.Context) error {
 	device := c.FormValue("device")
 	login := c.FormValue("login")
 	password := c.FormValue("password")
@@ -157,35 +116,35 @@ func GetFileRequest(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
 
-	if !crypto.VerifyPassword(fmt.Sprintf(db.PathToUserPassword, login), password) {
-		errRequestsLog.Printf("Неверный пароль Login %s, Device %s", login, device)
-		encryptResp, _ := crypto.StringEncrypt([]byte("Incorrect login or password"), key)
-		return c.String(http.StatusBadRequest, encryptResp)
-	}
-
 	fileName, err = crypto.StringDecrypt(fileName, key)
 	if err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
 
-	file, err := os.ReadFile(fmt.Sprintf(db.PathToUserUnreceivedFilesDir+fileName, login))
+	if !crypto.VerifyPassword(fmt.Sprintf(db.PathToUserPassword, login), password) {
+		errRequestsLog.Printf("Неверный пароль Login %s, Device %s", login, device)
+		encryptResp, _ := crypto.StringEncrypt([]byte("Incorrect login or password"), key)
+		return c.String(http.StatusBadRequest, encryptResp)
+	}
+
+	file, err := messages.GetFile(login, fileName)
 	if err != nil {
-		encryptResp, _ := crypto.StringEncrypt([]byte("Can not get this is file"), key)
-		return c.String(http.StatusInternalServerError, encryptResp)
+		encryptResp, _ := crypto.StringEncrypt([]byte(err.Error()), key)
+		return c.String(http.StatusBadRequest, encryptResp)
 	}
 
 	file, err = crypto.StringEncryptByte(file, key)
 	if err != nil {
-		encryptResp, _ := crypto.StringEncrypt([]byte("Encrypted error"), key)
-		return c.String(http.StatusInternalServerError, encryptResp)
+		encryptResp, _ := crypto.StringEncrypt([]byte(err.Error()), key)
+		return c.String(http.StatusBadRequest, encryptResp)
 	}
 
 	usersRequestsLog.Printf("Запрос: getfile. Login %s, FileName: %s, DeviceID: %s", login, fileName, device)
 	return c.JSON(http.StatusOK, file)
 }
 
-func DelFileRequest(c echo.Context) error {
+func DelFile(c echo.Context) error {
 	device := c.FormValue("device")
 	login := c.FormValue("login")
 	password := c.FormValue("password")
@@ -220,11 +179,6 @@ func DelFileRequest(c echo.Context) error {
 	fileName, err = crypto.StringDecrypt(fileName, key)
 	if err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)
-		return c.String(http.StatusInternalServerError, encryptResp)
-	}
-
-	if err := os.Remove(fmt.Sprintf(db.PathToUserUnreceivedFilesDir+fileName, login)); err != nil {
-		encryptResp, _ := crypto.StringEncrypt([]byte("Deleted error"), key)
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
 
@@ -232,7 +186,7 @@ func DelFileRequest(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func SetAvatarRequest(c echo.Context) error {
+func SetAvatar(c echo.Context) error {
 	var req Avatar
 	if err := c.Bind(&req); err != nil {
 		CountInvalidRequests += 1
@@ -270,8 +224,8 @@ func SetAvatarRequest(c echo.Context) error {
 		return c.String(http.StatusBadRequest, encryptResp)
 	}
 
-	if err = os.WriteFile(fmt.Sprintf(db.PathToUserAvatar, req.Login), req.Avatar, db.ValuesAccessFile); err != nil {
-		encryptResp, _ := crypto.StringEncrypt([]byte("Failed to upload avatar"), key)
+	if err := profile.SetAvatar(req.Login, req.Avatar); err != nil {
+		encryptResp, _ := crypto.StringEncrypt([]byte(err.Error()), key)
 		return c.String(http.StatusBadRequest, encryptResp)
 	}
 
@@ -279,7 +233,7 @@ func SetAvatarRequest(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func GetAvatarRequest(c echo.Context) error {
+func GetAvatar(c echo.Context) error {
 	device := c.FormValue("device")
 	loginForSearch := c.FormValue("loginforsearch")
 	keyForServerDataBase := c.FormValue("forserver")
@@ -298,10 +252,10 @@ func GetAvatarRequest(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
 
-	avatar, err := os.ReadFile(fmt.Sprintf(db.PathToUserAvatar, loginForSearch))
+	avatar, err := profile.GetAvatar(loginForSearch)
 	if err != nil {
-		encryptResp, _ := crypto.StringEncrypt([]byte("The user does not have an avatar"), key)
-		return c.String(http.StatusNoContent, encryptResp)
+		encryptResp, _ := crypto.StringEncrypt([]byte(err.Error()), key)
+		return c.String(http.StatusInternalServerError, encryptResp)
 	}
 
 	avatar, err = crypto.StringEncryptByte(avatar, key)

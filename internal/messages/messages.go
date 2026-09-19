@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"server/internal/db"
-	"server/internal/models"
 	"server/internal/writer"
 	"strings"
 	"time"
@@ -22,7 +21,7 @@ func Send(senderLogin, receiverLogin, message string) error {
 
 	// далее все что закоментировано относитьяс к инициализации зашифрованного диалога
 	// senderLoginHashed := c.FormValue("senderLoginHashed")
-	var messageData models.UserMessage
+	var messageData UserMessage
 	var pathToFileWithMessages string
 	// if senderLoginHashed == "" {
 	// senderLoginEncrypt, err := crypto.StringEncrypt([]byte(senderLogin), secretKeyForChiperLoginsOnServerDataBase)
@@ -31,7 +30,7 @@ func Send(senderLogin, receiverLogin, message string) error {
 	// 	return c.String(http.StatusBadRequest, encryptResp)
 	// }
 
-	messageData = models.UserMessage{
+	messageData = UserMessage{
 		Sender:   senderLogin,
 		Message:  message,
 		SendTime: time.Now(),
