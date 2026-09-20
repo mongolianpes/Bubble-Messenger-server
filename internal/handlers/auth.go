@@ -3,7 +3,6 @@ package handlers
 import (
 	"net/http"
 
-	"server/internal/auth"
 	"server/internal/crypto"
 
 	"github.com/labstack/echo/v4"
@@ -19,7 +18,7 @@ type KeyExchangeRequest struct {
 	IsRegistring    bool   `json:"is_registring"`
 }
 
-func (h *TLSHandler) TLS(c echo.Context) error {
+func (h *Handler) TLS(c echo.Context) error {
 	var req KeyExchangeRequest
 	if err := c.Bind(&req); err != nil {
 		CountInvalidRequests += 1
@@ -31,7 +30,7 @@ func (h *TLSHandler) TLS(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid error"})
 	}
 
-	serverPublicKey, err := auth.ExchangeKey(req.IsRegistring, req.ClientPublicKey, req.ID)
+	serverPublicKey, err := h.UsersService.TLS(c.Request().Context(), req.IsRegistring, req.ClientPublicKey, req.ID)
 	if err != nil {
 		errRequestsLog.Printf("exchangekey: %s", err)
 	}
@@ -55,7 +54,7 @@ func (h *Handler) Reg(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	key, err := auth.Register(c.Request().Context(), h.RedisDB, login, name, password, device, keyForServerDataBase)
+	key, err := h.UsersService.Register(c.Request().Context(), login, name, password, device)
 	if err != nil {
 		resp := ""
 		if key != "" {
@@ -81,7 +80,7 @@ func (h *Handler) Auth(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	userName, key, err := auth.Auth(c.Request().Context(), h.RedisDB, login, password, device, keyForServerDataBase)
+	userName, key, err := h.UsersService.Auth(c.Request().Context(), login, password, device)
 	if err != nil {
 		resp := ""
 		if key != "" {

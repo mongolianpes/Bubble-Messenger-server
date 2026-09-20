@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"server/internal/auth"
 	"server/internal/handlers"
 	"server/internal/search"
 
@@ -21,12 +20,13 @@ func main() {
 Start on ports: 23099, 23098, 23097
 `, echo.Version)
 
-	hand := handlers.NewHand()
-	TLShand := handlers.NewTLSHand()
+	hand, err := handlers.NewHand()
+	if err != nil {
+		panic(err)
+	}
 
 	handlers.OpenLogFiles()
 	search.LoadPopularUsers()
-	go auth.CheckStartRegAuthUsersTime()
 	go handlers.CheckLastUsedTimeInAudioDialog()
 
 	go func() {
@@ -34,7 +34,7 @@ Start on ports: 23099, 23098, 23097
 		mainService.Logger.SetOutput(handlers.ErrEchoLog.Writer())
 		mainService.Use(middleware.Recover())
 		mainService.HideBanner = true
-		mainService.POST("/exchangekey", TLShand.TLS)
+		mainService.POST("/exchangekey", hand.TLS)
 		mainService.POST("/reg", hand.Reg)
 		mainService.POST("/auth", hand.Auth)
 		mainService.POST("/searchuser", hand.SearchUser)

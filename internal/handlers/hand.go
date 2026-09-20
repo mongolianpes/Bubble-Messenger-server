@@ -1,29 +1,20 @@
 package handlers
 
 import (
-	"os"
-	"server/internal/rdb"
+	"server/internal/users"
 )
 
 type Handler struct {
-	RedisDB rdb.DB
+	UsersService users.UsersService
 }
 
-var rdbAddr = os.Getenv("rdbaddr")
-
-func NewHand() *Handler {
-	rdb, err := rdb.NewClient(rdbAddr)
+func NewHand() (*Handler, error) {
+	usersService, err := users.NewClient()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return &Handler{
-		RedisDB: rdb,
-	}
-}
-
-type TLSHandler struct{}
-
-func NewTLSHand() *TLSHandler {
-	return &TLSHandler{}
+		UsersService: usersService,
+	}, nil
 }

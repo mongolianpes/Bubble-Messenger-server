@@ -42,7 +42,7 @@ func (h *Handler) SendFile(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	key, err := h.RedisDB.GetKey(c.Request().Context(), req.Device)
+	key, err := h.UsersService.GetKey(c.Request().Context(), req.Device)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
@@ -101,7 +101,7 @@ func (h *Handler) GetFile(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	key, err := h.RedisDB.GetKey(c.Request().Context(), device)
+	key, err := h.UsersService.GetKey(c.Request().Context(), device)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
@@ -156,7 +156,7 @@ func (h *Handler) DelFile(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	key, err := h.RedisDB.GetKey(c.Request().Context(), device)
+	key, err := h.UsersService.GetKey(c.Request().Context(), device)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
@@ -200,7 +200,7 @@ func (h *Handler) SetAvatar(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	key, err := h.RedisDB.GetKey(c.Request().Context(), req.DeviceInfo)
+	key, err := h.UsersService.GetKey(c.Request().Context(), req.DeviceInfo)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
@@ -245,7 +245,7 @@ func (h *Handler) GetAvatar(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	key, err := h.RedisDB.GetKey(c.Request().Context(), device)
+	key, err := h.UsersService.GetKey(c.Request().Context(), device)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
