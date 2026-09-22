@@ -1,12 +1,13 @@
-package main
+package handlers
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"server/internal/crypto"
-	"time"
+	"server/internal/profile"
+
+	"server/internal/db"
+	"server/internal/messages"
 
 	"github.com/labstack/echo/v4"
 )
@@ -29,28 +30,23 @@ type Avatar struct {
 	KeyForServerDataBase string `json:"forserver"`
 }
 
-func sendFileRequest(c echo.Context) error {
+func (h *Handler) SendFile(c echo.Context) error {
 	var req SendFileRequest
 	if err := c.Bind(&req); err != nil {
-		countInvalidRequests += 1
+		CountInvalidRequests += 1
 		return c.JSON(http.StatusBadRequest, "Invalid JSON")
 	}
 
 	if req.Sender == "" || req.Receiver == "" || req.SenderPassword == "" || req.FileName == "" || req.Device == "" || req.KeyForServerDataBase == "" || req.File == nil {
-		countInvalidRequests += 1
+		CountInvalidRequests += 1
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	fileData, err := os.ReadFile(fmt.Sprintf(idsDir, req.Device[:220]))
+	key, err := h.UsersService.GetKey(c.Request().Context(), req.Device)
 	if err != nil {
-		usersRequestsLog.Printf("Попытка отправки запроса от незарегистрированного устройства Login %s, Device %s", req.Sender, req.Device)
-		return c.String(http.StatusBadRequest, "This device is not registered")
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
-	key, err := crypto.StringDecrypt(string(fileData), req.KeyForServerDataBase+secretServerSalt)
-	if err != nil {
-		errRequestsLog.Printf("Сообщение клиента не удалось расшифровать. Device %s", req.Device)
-		return c.String(http.StatusBadRequest, "Decrypted error")
-	}
+
 	req.Sender, err = crypto.StringDecrypt(req.Sender, key)
 	if err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)
@@ -62,7 +58,7 @@ func sendFileRequest(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
 
-	if !crypto.VerifyPassword(fmt.Sprintf(pathToUserPassword, req.Sender), req.SenderPassword) {
+	if !crypto.VerifyPassword(fmt.Sprintf(db.PathToUserPassword, req.Sender), req.SenderPassword) {
 		errRequestsLog.Printf("Неверный пароль Login %s, Device %s", req.Sender, req.Device)
 		encryptResp, _ := crypto.StringEncrypt([]byte("Incorrect login or password"), key)
 		return c.String(http.StatusBadRequest, encryptResp)
@@ -71,15 +67,6 @@ func sendFileRequest(c echo.Context) error {
 	req.Receiver, err = crypto.StringDecrypt(req.Receiver, key)
 	if err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)
-		return c.String(http.StatusInternalServerError, encryptResp)
-	}
-
-	if _, err = os.Stat(fmt.Sprintf(usersDir, req.Sender)); err != nil {
-		encryptResp, _ := crypto.StringEncrypt([]byte("There is no sender with this login"), key)
-		return c.String(http.StatusInternalServerError, encryptResp)
-	}
-	if _, err = os.Stat(fmt.Sprintf(usersDir, req.Receiver)); err != nil {
-		encryptResp, _ := crypto.StringEncrypt([]byte("There is no receiver with this login"), key)
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
 
@@ -94,65 +81,31 @@ func sendFileRequest(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
 
-	now := time.Now()
-	fileNameInDatabase := fmt.Sprintf(
-		pathToUserUnreceivedFilesDir+"%s.%d%d%d%d%d%d",
-		req.Receiver,
-		req.FileName,
-		now.Year(),
-		now.YearDay(),
-		now.Hour(),
-		now.Minute(),
-		now.Second(),
-		now.Nanosecond(),
-	)
-
-	if err := os.WriteFile(fileNameInDatabase, req.File, valuesAccessFile); err != nil {
-		encryptResp, _ := crypto.StringEncrypt([]byte("Failed to upload your file"), key)
+	if err := messages.SendFile(req.Sender, req.Receiver, req.FileName, req.File); err != nil {
+		encryptResp, _ := crypto.StringEncrypt([]byte(err.Error()), key)
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
-
-	pathToFileWithMessages := fmt.Sprintf(pathToUserMessagesDir, req.Receiver)
-
-	messageData := Message{
-		req.Sender,
-		"p\\" + req.FileName + "\\" + fileNameInDatabase,
-		now,
-	}
-
-	jsonMessageData, err := json.Marshal(messageData)
-	if err != nil {
-		encryptResp, _ := crypto.StringEncrypt([]byte("Unable to process data"), key)
-		return c.String(http.StatusInternalServerError, encryptResp)
-	}
-
-	saveMessagesManager.Write(pathToFileWithMessages, jsonMessageData)
 
 	usersRequestsLog.Printf("Запрос sendfile. Sender: %s, Receiver: %s, FileSize: %v. DeviceID: %s", req.Sender, req.Receiver, len(req.File), req.Device)
 	return c.NoContent(http.StatusOK)
 }
 
-func getFileRequest(c echo.Context) error {
+func (h *Handler) GetFile(c echo.Context) error {
 	device := c.FormValue("device")
 	login := c.FormValue("login")
 	password := c.FormValue("password")
 	fileName := c.FormValue("filename")
 	keyForServerDataBase := c.FormValue("forserver")
 	if device == "" || login == "" || password == "" || fileName == "" || keyForServerDataBase == "" {
-		countInvalidRequests += 1
+		CountInvalidRequests += 1
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	fileData, err := os.ReadFile(fmt.Sprintf(idsDir, device[:220]))
+	key, err := h.UsersService.GetKey(c.Request().Context(), device)
 	if err != nil {
-		usersRequestsLog.Printf("Попытка отправки запроса от незарегистрированного устройства Login %s, Device %s", login, device)
-		return c.String(http.StatusBadRequest, "This device is not registered")
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
-	key, err := crypto.StringDecrypt(string(fileData), keyForServerDataBase+secretServerSalt)
-	if err != nil {
-		errRequestsLog.Printf("Сообщение клиента не удалось расшифровать. Device %s", device)
-		return c.String(http.StatusBadRequest, "Decrypted error")
-	}
+
 	login, err = crypto.StringDecrypt(login, key)
 	if err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)
@@ -164,55 +117,50 @@ func getFileRequest(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
 
-	if !crypto.VerifyPassword(fmt.Sprintf(pathToUserPassword, login), password) {
-		errRequestsLog.Printf("Неверный пароль Login %s, Device %s", login, device)
-		encryptResp, _ := crypto.StringEncrypt([]byte("Incorrect login or password"), key)
-		return c.String(http.StatusBadRequest, encryptResp)
-	}
-
 	fileName, err = crypto.StringDecrypt(fileName, key)
 	if err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
 
-	file, err := os.ReadFile(fmt.Sprintf(pathToUserUnreceivedFilesDir+fileName, login))
+	if !crypto.VerifyPassword(fmt.Sprintf(db.PathToUserPassword, login), password) {
+		errRequestsLog.Printf("Неверный пароль Login %s, Device %s", login, device)
+		encryptResp, _ := crypto.StringEncrypt([]byte("Incorrect login or password"), key)
+		return c.String(http.StatusBadRequest, encryptResp)
+	}
+
+	file, err := messages.GetFile(login, fileName)
 	if err != nil {
-		encryptResp, _ := crypto.StringEncrypt([]byte("Can not get this is file"), key)
-		return c.String(http.StatusInternalServerError, encryptResp)
+		encryptResp, _ := crypto.StringEncrypt([]byte(err.Error()), key)
+		return c.String(http.StatusBadRequest, encryptResp)
 	}
 
 	file, err = crypto.StringEncryptByte(file, key)
 	if err != nil {
-		encryptResp, _ := crypto.StringEncrypt([]byte("Encrypted error"), key)
-		return c.String(http.StatusInternalServerError, encryptResp)
+		encryptResp, _ := crypto.StringEncrypt([]byte(err.Error()), key)
+		return c.String(http.StatusBadRequest, encryptResp)
 	}
 
 	usersRequestsLog.Printf("Запрос: getfile. Login %s, FileName: %s, DeviceID: %s", login, fileName, device)
 	return c.JSON(http.StatusOK, file)
 }
 
-func delFileRequest(c echo.Context) error {
+func (h *Handler) DelFile(c echo.Context) error {
 	device := c.FormValue("device")
 	login := c.FormValue("login")
 	password := c.FormValue("password")
 	fileName := c.FormValue("filename")
 	keyForServerDataBase := c.FormValue("forserver")
 	if device == "" || login == "" || password == "" || fileName == "" || keyForServerDataBase == "" {
-		countInvalidRequests += 1
+		CountInvalidRequests += 1
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	fileData, err := os.ReadFile(fmt.Sprintf(idsDir, device[:220]))
+	key, err := h.UsersService.GetKey(c.Request().Context(), device)
 	if err != nil {
-		usersRequestsLog.Printf("Попытка отправки запроса от незарегистрированного устройства Login %s, Device %s", login, device)
-		return c.String(http.StatusBadRequest, "This device is not registered")
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
-	key, err := crypto.StringDecrypt(string(fileData), keyForServerDataBase+secretServerSalt)
-	if err != nil {
-		errRequestsLog.Printf("Сообщение клиента не удалось расшифровать. Device %s", device)
-		return c.String(http.StatusBadRequest, "Unknow error")
-	}
+
 	login, err = crypto.StringDecrypt(login, key)
 	if err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)
@@ -224,7 +172,7 @@ func delFileRequest(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
 
-	if !crypto.VerifyPassword(fmt.Sprintf(pathToUserPassword, login), password) {
+	if !crypto.VerifyPassword(fmt.Sprintf(db.PathToUserPassword, login), password) {
 		errRequestsLog.Printf("Неверный пароль Login %s, Device %s", login, device)
 		encryptResp, _ := crypto.StringEncrypt([]byte("Incorrect login or password"), key)
 		return c.String(http.StatusBadRequest, encryptResp)
@@ -233,11 +181,6 @@ func delFileRequest(c echo.Context) error {
 	fileName, err = crypto.StringDecrypt(fileName, key)
 	if err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)
-		return c.String(http.StatusInternalServerError, encryptResp)
-	}
-
-	if err := os.Remove(fmt.Sprintf(pathToUserUnreceivedFilesDir+fileName, login)); err != nil {
-		encryptResp, _ := crypto.StringEncrypt([]byte("Deleted error"), key)
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
 
@@ -245,29 +188,23 @@ func delFileRequest(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func setAvatarRequest(c echo.Context) error {
+func (h *Handler) SetAvatar(c echo.Context) error {
 	var req Avatar
 	if err := c.Bind(&req); err != nil {
-		countInvalidRequests += 1
+		CountInvalidRequests += 1
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
 	}
 
 	if req.DeviceInfo == "" || req.Login == "" || req.Password == "" || req.KeyForServerDataBase == "" {
-		countInvalidRequests += 1
+		CountInvalidRequests += 1
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	fileData, err := os.ReadFile(fmt.Sprintf(idsDir, req.DeviceInfo[:220]))
+	key, err := h.UsersService.GetKey(c.Request().Context(), req.DeviceInfo)
 	if err != nil {
-		usersRequestsLog.Printf("Попытка отправки запроса от незарегистрированного устройства Login %s, Device %s", req.Login, req.DeviceInfo)
-		return c.String(http.StatusBadRequest, "This device is not registered")
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
-	key, err := crypto.StringDecrypt(string(fileData), req.KeyForServerDataBase+secretServerSalt)
-	if err != nil {
-		errRequestsLog.Printf("Сообщение клиента не удалось расшифровать. Device %s", req.DeviceInfo)
-		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)
-		return c.String(http.StatusBadRequest, encryptResp)
-	}
+
 	req.Login, err = crypto.StringDecrypt(req.Login, key)
 	if err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)
@@ -284,14 +221,14 @@ func setAvatarRequest(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
 
-	if !crypto.VerifyPassword(fmt.Sprintf(pathToUserPassword, req.Login), req.Password) {
+	if !crypto.VerifyPassword(fmt.Sprintf(db.PathToUserPassword, req.Login), req.Password) {
 		errRequestsLog.Printf("Неверный пароль Login %s, Device %s", req.Login, req.DeviceInfo)
 		encryptResp, _ := crypto.StringEncrypt([]byte("Incorrect login or password"), key)
 		return c.String(http.StatusBadRequest, encryptResp)
 	}
 
-	if err = os.WriteFile(fmt.Sprintf(pathToUserAvatar, req.Login), req.Avatar, valuesAccessFile); err != nil {
-		encryptResp, _ := crypto.StringEncrypt([]byte("Failed to upload avatar"), key)
+	if err := profile.SetAvatar(req.Login, req.Avatar); err != nil {
+		encryptResp, _ := crypto.StringEncrypt([]byte(err.Error()), key)
 		return c.String(http.StatusBadRequest, encryptResp)
 	}
 
@@ -299,35 +236,30 @@ func setAvatarRequest(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func getAvatarRequest(c echo.Context) error {
+func (h *Handler) GetAvatar(c echo.Context) error {
 	device := c.FormValue("device")
 	loginForSearch := c.FormValue("loginforsearch")
 	keyForServerDataBase := c.FormValue("forserver")
 	if device == "" || loginForSearch == "" || keyForServerDataBase == "" {
-		countInvalidRequests += 1
+		CountInvalidRequests += 1
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	fileData, err := os.ReadFile(fmt.Sprintf(idsDir, device[:220]))
+	key, err := h.UsersService.GetKey(c.Request().Context(), device)
 	if err != nil {
-		usersRequestsLog.Printf("Попытка отправки запроса от незарегистрированного устройства LoginForSearch %s, Device %s", loginForSearch, device)
-		return c.String(http.StatusBadRequest, "This device is not registered")
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
-	key, err := crypto.StringDecrypt(string(fileData), keyForServerDataBase+secretServerSalt)
-	if err != nil {
-		errRequestsLog.Printf("Сообщение клиента не удалось расшифровать. Device %s", device)
-		return c.String(http.StatusBadRequest, "Unknow error")
-	}
+
 	loginForSearch, err = crypto.StringDecrypt(loginForSearch, key)
 	if err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
 
-	avatar, err := os.ReadFile(fmt.Sprintf(pathToUserAvatar, loginForSearch))
+	avatar, err := profile.GetAvatar(loginForSearch)
 	if err != nil {
-		encryptResp, _ := crypto.StringEncrypt([]byte("The user does not have an avatar"), key)
-		return c.String(http.StatusNoContent, encryptResp)
+		encryptResp, _ := crypto.StringEncrypt([]byte(err.Error()), key)
+		return c.String(http.StatusInternalServerError, encryptResp)
 	}
 
 	avatar, err = crypto.StringEncryptByte(avatar, key)

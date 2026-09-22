@@ -1,16 +1,15 @@
-package main
+package search
 
 import (
 	"encoding/gob"
-	"encoding/json"
+	"errors"
 	"fmt"
-	"net/http"
 	"os"
-	"server/internal/crypto"
+	"server/internal/db"
 	"strings"
 	"time"
 
-	"github.com/labstack/echo/v4"
+	"server/internal/models"
 )
 
 const (
@@ -27,66 +26,14 @@ type PopularUser struct {
 	LastFindTime time.Time
 }
 
-type FindUser struct {
-	Login string `json:"login"`
-	Name  string `json:"name"`
-}
-
-func searchUserRequest(c echo.Context) error {
-	device := c.FormValue("device")
-	loginForSearch := c.FormValue("loginforsearch")
-	keyForServerDataBase := c.FormValue("forserver")
-	if device == "" || loginForSearch == "" || keyForServerDataBase == "" {
-		countInvalidRequests += 1
-		return c.String(http.StatusBadRequest, "Did not receive all server data")
-	}
-
-	fileData, err := os.ReadFile(fmt.Sprintf(idsDir, device[:220]))
-	if err != nil {
-		usersRequestsLog.Printf("Попытка отправки запроса от незарегистрированного устройства LoginForSearch %s, Device %s", loginForSearch, device)
-		return c.String(http.StatusBadRequest, "This device is not registered")
-	}
-	key, err := crypto.StringDecrypt(string(fileData), keyForServerDataBase+secretServerSalt)
-	if err != nil {
-		usersRequestsLog.Printf("Попытка отправки запроса от незарегистрированного устройства LoginForSearch %s, Device %s", loginForSearch, device)
-		encryptResp, _ := crypto.StringEncrypt([]byte("Unknown error"), key)
-		return c.String(http.StatusInternalServerError, encryptResp)
-	}
-	loginForSearch, err = crypto.StringDecrypt(loginForSearch, key)
-	if err != nil {
-		encryptResp, _ := crypto.StringEncrypt([]byte("Decrypted error"), key)
-		return c.String(http.StatusInternalServerError, encryptResp)
-	}
-
-	if !isValidStr(loginForSearch, false) {
-		encryptResp, _ := crypto.StringEncrypt([]byte("Login for search is not valid"), key)
-		return c.String(http.StatusBadRequest, encryptResp)
-	}
-
-	var findUsers []FindUser
-	sortUsersInSearch(&findUsers, loginForSearch)
-
-	b, err := json.Marshal(findUsers)
-	if err != nil {
-		errRequestsLog.Printf("searchuse: Не удалось преобразовать в json найденных пользователей Device %s", device)
-		encryptResp, _ := crypto.StringEncrypt([]byte("Can not marshal find users"), key)
-		return c.String(http.StatusBadRequest, encryptResp)
-	}
-
-	b, _ = crypto.StringEncryptByte(b, key)
-
-	usersRequestsLog.Printf("Запрос serchuser. LoginForSearch %s. DeviceID: %s", loginForSearch, device)
-	return c.Blob(http.StatusOK, "application/octet-stream", b)
-}
-
-func sortUsersInSearch(findLogins *[]FindUser, loginForSearch string) {
+func SortUsersInSearch(findLogins *[]models.FindUser, loginForSearch string) {
 	searchString := strings.ToLower(loginForSearch)
 
 	limitSearch := 3 + len(loginForSearch)
 	for userLogin := range popularTodayUsers {
 		userLoginLower := strings.ToLower(userLogin)
 		if strings.Contains(userLoginLower, searchString) && userLoginLower != searchString {
-			findUser := FindUser{
+			findUser := models.FindUser{
 				Login: userLogin,
 				Name:  popularTodayUsers[userLogin].UserName,
 			}
@@ -114,7 +61,7 @@ func sortUsersInSearch(findLogins *[]FindUser, loginForSearch string) {
 	for userLogin := range popularAlwaysUsers {
 		userLoginLower := strings.ToLower(userLogin)
 		if strings.Contains(userLoginLower, searchString) && userLoginLower != searchString {
-			findUser := FindUser{
+			findUser := models.FindUser{
 				Login: userLogin,
 				Name:  popularAlwaysUsers[userLogin].UserName,
 			}
@@ -138,8 +85,8 @@ func sortUsersInSearch(findLogins *[]FindUser, loginForSearch string) {
 		}
 	}
 
-	if userName, err := os.ReadFile(fmt.Sprintf(pathToUserName, loginForSearch)); !os.IsNotExist(err) {
-		findUser := FindUser{
+	if userName, err := os.ReadFile(fmt.Sprintf(db.PathToUserName, loginForSearch)); !os.IsNotExist(err) {
+		findUser := models.FindUser{
 			Login: loginForSearch,
 			Name:  string(userName),
 		}
@@ -164,7 +111,7 @@ func sortUsersInSearch(findLogins *[]FindUser, loginForSearch string) {
 	}
 }
 
-func savePopularUsers() {
+func SavePopularUsers() error {
 	var mostPopularToday *PopularUser
 	haveUserToChange := false
 	for userLogin, user := range popularTodayUsers {
@@ -196,33 +143,29 @@ func savePopularUsers() {
 
 	file, err := os.Create("popularAlwaysUsers")
 	if err != nil {
-		errServerRoutineLog.Print("Не удалось записать популярных пользователей")
-		return
+		return errors.New("Не удалось записать популярных пользователей")
 	}
 	defer file.Close()
 
 	encoder := gob.NewEncoder(file)
 	if err = encoder.Encode(popularTodayUsers); err != nil {
-		errServerRoutineLog.Print("Не удалось закодировать новых популярных пользователей")
-		return
+		return errors.New("Не удалось закодировать новых популярных пользователей")
 	}
 
-	serverRoutineLog.Print("Успешное обновление популярных пользователей")
+	return nil
 }
 
-func loadPopularUsers() {
+func LoadPopularUsers() error {
 	file, err := os.Open("popularAlwaysUsers")
 	if err != nil {
-		errServerRoutineLog.Print("Не удалось открыть файл с популярными пользователями")
-		return
+		return errors.New("Не удалось открыть файл с популярными пользователями")
 	}
 	defer file.Close()
 
 	decoder := gob.NewDecoder(file)
 	if err = decoder.Decode(&popularAlwaysUsers); err != nil {
-		errServerRoutineLog.Print("Не удалось декодировать популярных пользователей")
-		return
+		return errors.New("Не удалось декодировать популярных пользователей")
 	}
 
-	serverRoutineLog.Print("Успешное чтение популярных пользователей")
+	return nil
 }

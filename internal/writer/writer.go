@@ -22,6 +22,8 @@ type FileWriterManager struct {
 	timeout time.Duration
 }
 
+var SaveMessagesManager = NewFileWriterManager(2 * time.Minute)
+
 func NewFileWriterManager(timeout time.Duration) *FileWriterManager {
 	return &FileWriterManager{
 		workers: make(map[string]*FileWorker),
