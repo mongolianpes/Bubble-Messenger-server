@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"server/internal/handlers"
-	"server/internal/search"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -26,7 +25,6 @@ Start on ports: 23099, 23098, 23097
 	}
 
 	handlers.OpenLogFiles()
-	search.LoadPopularUsers()
 	go handlers.CheckLastUsedTimeInAudioDialog()
 
 	go func() {
@@ -75,16 +73,8 @@ Start on ports: 23099, 23098, 23097
 		}
 	}()
 
-	var countHours = 0
 	for {
 		time.Sleep(time.Hour)
-
-		countHours += 1
-		if countHours >= 22 {
-			countHours = 0
-			search.SavePopularUsers()
-			handlers.ServerRoutineLog.Print("Сохранены популярные пользователи")
-		}
 
 		if handlers.CountInvalidRequests > 0 {
 			handlers.ServerRoutineLog.Printf("За последний час невалидных запросов: %v", handlers.CountInvalidRequests)

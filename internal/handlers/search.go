@@ -5,9 +5,6 @@ import (
 	"net/http"
 	"server/internal/crypto"
 
-	"server/internal/models"
-	"server/internal/search"
-
 	"github.com/labstack/echo/v4"
 )
 
@@ -36,8 +33,11 @@ func (h *Handler) SearchUser(c echo.Context) error {
 		return c.String(http.StatusBadRequest, encryptResp)
 	}
 
-	var findUsers []models.FindUser
-	search.SortUsersInSearch(&findUsers, loginForSearch)
+	findUsers, err := h.UsersService.Search(c.Request().Context(), loginForSearch)
+	if err != nil {
+		encryptResp, _ := crypto.StringEncrypt([]byte("Can not find users"), key)
+		return c.String(http.StatusBadRequest, encryptResp)
+	}
 
 	b, err := json.Marshal(findUsers)
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 
+	"server/internal/models"
 	pb "server/internal/users/proto"
 
 	"google.golang.org/grpc"
@@ -21,6 +22,7 @@ type UsersService interface {
 	Register(ctx context.Context, login, name, password, device string) (string, error)
 	Auth(ctx context.Context, login, password, device string) (string, string, error)
 	GetKey(ctx context.Context, device string) (string, error)
+	Search(ctx context.Context, login string) ([]models.FindUser, error)
 	Close() error
 }
 
