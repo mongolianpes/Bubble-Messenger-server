@@ -26,7 +26,7 @@ type UsersService interface {
 	Close() error
 }
 
-var messengerServiceHost = os.Getenv("MESSENGER_SERVICE_HOST_GRPC_PORT")
+var usersServiceHost = os.Getenv("USERS_SERVICE_HOST_GRPC_PORT")
 
 func NewClient() (*Client, error) {
 	client := &Client{}
@@ -34,7 +34,7 @@ func NewClient() (*Client, error) {
 		return client, nil
 	}
 
-	conn, err := grpc.NewClient(messengerServiceHost, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(usersServiceHost, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		slog.Error("Не удалось создать подключение к микросервису Announcements", "error", err)
 		return client, err
