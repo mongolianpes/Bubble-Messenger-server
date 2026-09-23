@@ -1,12 +1,12 @@
 package messages
 
 import (
+	"bubble/internal/db"
+	"bubble/internal/writer"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"server/internal/db"
-	"server/internal/writer"
 	"strings"
 	"time"
 )

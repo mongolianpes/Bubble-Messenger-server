@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"server/internal/users"
+	"bubble/internal/users"
 )
 
 type Handler struct {

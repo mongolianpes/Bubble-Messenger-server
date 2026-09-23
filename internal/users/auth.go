@@ -3,7 +3,7 @@ package users
 import (
 	"context"
 
-	pb "server/internal/users/proto"
+	pb "bubble/internal/users/proto"
 	"time"
 )
 

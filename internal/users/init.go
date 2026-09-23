@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"os"
 
-	"server/internal/models"
-	pb "server/internal/users/proto"
+	"bubble/internal/models"
+	pb "bubble/internal/users/proto"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

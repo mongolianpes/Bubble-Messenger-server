@@ -1,9 +1,9 @@
 package handlers
 
 import (
+	"bubble/internal/crypto"
 	"encoding/json"
 	"net/http"
-	"server/internal/crypto"
 
 	"github.com/labstack/echo/v4"
 )

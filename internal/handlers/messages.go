@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"server/internal/crypto"
-	"server/internal/db"
-	"server/internal/messages"
+	"bubble/internal/crypto"
+	"bubble/internal/db"
+	"bubble/internal/messages"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"

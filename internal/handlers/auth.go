@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 
-	"server/internal/crypto"
+	"bubble/internal/crypto"
 
 	"github.com/labstack/echo/v4"
 )

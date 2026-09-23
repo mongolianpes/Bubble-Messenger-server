@@ -1,11 +1,11 @@
 package writer
 
 import (
+	"bubble/internal/gzip"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
-	"server/internal/gzip"
 	"sync"
 	"time"
 )
@@ -225,7 +225,7 @@ func (m *FileWriterManager) saveArchive(path string, data []byte, gz bool) {
 // 	"io"
 // 	"os"
 // 	"path/filepath"
-// 	"server/gzip"
+// 	"bubble/gzip"
 // 	"sync"
 // 	"time"
 // )

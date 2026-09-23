@@ -1,9 +1,9 @@
 package users
 
 import (
+	"bubble/internal/models"
+	pb "bubble/internal/users/proto"
 	"context"
-	"server/internal/models"
-	pb "server/internal/users/proto"
 )
 
 func (c *Client) Search(ctx context.Context, login string) ([]models.FindUser, error) {

@@ -1,10 +1,10 @@
 package profile
 
 import (
+	"bubble/internal/db"
 	"errors"
 	"fmt"
 	"os"
-	"server/internal/db"
 )
 
 func SetAvatar(login string, avatar []byte) error {

@@ -1,13 +1,13 @@
 package handlers
 
 import (
+	"bubble/internal/crypto"
+	"bubble/internal/profile"
 	"fmt"
 	"net/http"
-	"server/internal/crypto"
-	"server/internal/profile"
 
-	"server/internal/db"
-	"server/internal/messages"
+	"bubble/internal/db"
+	"bubble/internal/messages"
 
 	"github.com/labstack/echo/v4"
 )
