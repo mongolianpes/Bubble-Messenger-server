@@ -17,7 +17,7 @@ func (h *Handler) SearchUser(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	key, err := h.UsersService.GetKey(c.Request().Context(), device)
+	key, _, err := h.UsersService.GetAuthInfo(c.Request().Context(), device)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}

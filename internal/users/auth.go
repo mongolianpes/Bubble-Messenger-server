@@ -52,13 +52,13 @@ func (c *Client) Auth(ctx context.Context, login, password, device string) (stri
 	return resp.Name, resp.Key, nil
 }
 
-func (c *Client) GetKey(ctx context.Context, device string) (string, error) {
-	resp, err := c.service.GetKey(ctx, &pb.GetKeyRequest{
+func (c *Client) GetAuthInfo(ctx context.Context, device string) (string, int, error) {
+	resp, err := c.service.GetAuthInfo(ctx, &pb.GetAuthInfoRequest{
 		Device: device,
 	})
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 
-	return resp.Key, nil
+	return resp.Key, int(resp.UserId), nil
 }

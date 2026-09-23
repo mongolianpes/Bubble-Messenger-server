@@ -48,7 +48,7 @@ func (h *Handler) SendMessage(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	key, err := h.UsersService.GetKey(c.Request().Context(), device)
+	key, _, err := h.UsersService.GetAuthInfo(c.Request().Context(), device)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
@@ -136,7 +136,7 @@ func (h *Handler) CheckMessage(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	key, err := h.UsersService.GetKey(c.Request().Context(), device)
+	key, _, err := h.UsersService.GetAuthInfo(c.Request().Context(), device)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
@@ -184,7 +184,7 @@ func (h *Handler) DelMessages(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Did not receive all server data")
 	}
 
-	key, err := h.UsersService.GetKey(c.Request().Context(), device)
+	key, _, err := h.UsersService.GetAuthInfo(c.Request().Context(), device)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}

@@ -13,7 +13,7 @@ import (
 )
 
 type Client struct {
-	service pb.UsersClient
+	service pb.UsersServiceClient
 	conn    *grpc.ClientConn
 }
 
@@ -21,7 +21,7 @@ type UsersService interface {
 	TLS(ctx context.Context, isRegistring bool, clientPublicKey, id string) (string, error)
 	Register(ctx context.Context, login, name, password, device string) (string, error)
 	Auth(ctx context.Context, login, password, device string) (string, string, error)
-	GetKey(ctx context.Context, device string) (string, error)
+	GetAuthInfo(ctx context.Context, device string) (string, int, error)
 	Search(ctx context.Context, login string) ([]models.FindUser, error)
 	Close() error
 }
@@ -40,7 +40,7 @@ func NewClient() (*Client, error) {
 		return client, err
 	}
 
-	client.service = pb.NewUsersClient(conn)
+	client.service = pb.NewUsersServiceClient(conn)
 	client.conn = conn
 	return client, nil
 }
