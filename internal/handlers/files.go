@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"bubble/internal/db"
-	"bubble/internal/messages"
+	"bubble/internal/messenger"
 
 	"github.com/labstack/echo/v4"
 )
@@ -81,7 +81,7 @@ func (h *Handler) SendFile(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
 
-	if err := messages.SendFile(req.Sender, req.Receiver, req.FileName, req.File); err != nil {
+	if err := messenger.SendFile(req.Sender, req.Receiver, req.FileName, req.File); err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte(err.Error()), key)
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
@@ -129,7 +129,7 @@ func (h *Handler) GetFile(c echo.Context) error {
 		return c.String(http.StatusBadRequest, encryptResp)
 	}
 
-	file, err := messages.GetFile(login, fileName)
+	file, err := messenger.GetFile(login, fileName)
 	if err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte(err.Error()), key)
 		return c.String(http.StatusBadRequest, encryptResp)

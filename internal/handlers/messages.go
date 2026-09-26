@@ -10,7 +10,6 @@ import (
 
 	"bubble/internal/crypto"
 	"bubble/internal/db"
-	"bubble/internal/messages"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -158,15 +157,14 @@ func (h *Handler) CheckMessage(c echo.Context) error {
 		return c.String(http.StatusBadRequest, encryptResp)
 	}
 
-	statusGzip, blockMessages, err := messages.Check(login)
+	newMessages, err := h.MessengerService.Check(c.Request().Context(), h.UsersService, login)
 	if err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte(err.Error()), key)
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}
 
-	messagesEncryptedByte, _ := crypto.StringEncryptByte([]byte(blockMessages), key)
+	messagesEncryptedByte, _ := crypto.StringEncryptByte(newMessages, key)
 	request := RequestCheckMessages{
-		Gzip:     statusGzip,
 		Messages: messagesEncryptedByte,
 	}
 
@@ -206,7 +204,7 @@ func (h *Handler) DelMessages(c echo.Context) error {
 		return c.String(http.StatusBadRequest, encryptResp)
 	}
 
-	if err := messages.Del(login); err != nil {
+	if err := h.MessengerService.Del(c.Request().Context(), h.UsersService, login); err != nil {
 		encryptResp, _ := crypto.StringEncrypt([]byte(err.Error()), key)
 		return c.String(http.StatusInternalServerError, encryptResp)
 	}

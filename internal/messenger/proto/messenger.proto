@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package messenger;
+
+import "timestamp.proto";
+
+option go_package = ".";
+
+message SendMessageRequest {
+  int64 received_id = 1;
+  int64 sender_id = 2;
+  string text = 3;
+}
+
+message SendMessageResponse {}
+
+message CheckChatsRequest {
+  int64 user_id = 1;
+}
+
+message CheckChatsResponse {
+  repeated NewMessage messages = 1;
+}
+
+message NewMessage {
+  string text = 1;
+  int64 sender_id = 2;
+  int64 received_id = 3;
+  google.protobuf.Timestamp create_at = 4;
+}
+
+message DelMessageRequest {
+  int64 user_id = 1;
+}
+
+message DelMessageResponse {}
+
+message SendFileRequest {
+  int64 sender_id = 1;
+  int64 received_id = 2;
+  string file_name = 3;
+  string database_path = 4;
+}
+
+message SendFileResponse {}
+
+service MessengerService {
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+  rpc CheckChats(CheckChatsRequest) returns (CheckChatsResponse);
+  rpc DelMessage(DelMessageRequest) returns (DelMessageResponse);
+  rpc SendFile(SendFileRequest) returns (SendFileResponse);
+}

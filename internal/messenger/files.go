@@ -1,4 +1,4 @@
-package messages
+package messenger
 
 import (
 	"bubble/internal/db"
